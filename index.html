@@ -19,7 +19,7 @@
       touch-action: none;
       overscroll-behavior: none;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #015573; /* fallback color */
+      background: #000;
       color: #fff;
     }
 
@@ -39,10 +39,15 @@
       }
     }
 
+    /* GAME ROOT – full-screen, background covers EVERYTHING */
     #gameRoot {
       position: fixed;
       inset: 0;
       overflow: hidden;
+      background-image: url("background1.PNG");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
     #tank {
@@ -50,22 +55,6 @@
       inset: 0;
       overflow: hidden;
       background: transparent;
-    }
-
-    /* BIG background wrapper – larger than screen to kill side bars */
-    #bgWrap {
-      position: absolute;
-      left: -10vw;
-      top: -10vh;
-      width: 120vw;
-      height: 120vh;
-      background-image: url("background1.PNG");
-      background-size: cover;
-      background-position: center 40%;
-      background-repeat: no-repeat;
-      will-change: transform;
-      pointer-events: none;
-      z-index: 1;
     }
 
     #fxCanvas {
@@ -187,13 +176,12 @@
 
 <div id="gameRoot">
   <div id="tank">
-    <div id="bgWrap"></div>
     <canvas id="fxCanvas"></canvas>
     <div id="fishLayer"></div>
   </div>
 
   <!-- UI -->
-  <div id="coinBubble">🪙<span id="coinCount">80</span></div>
+  <div id="coinBubble">🪙<span id="coinCount">20</span></div>
   <div id="feedBtn"  class="bubbleBtn">🍤</div>
   <div id="cleanBtn" class="bubbleBtn">🧽</div>
   <div id="buyBtn"   class="bubbleBtn">🐠</div>
@@ -215,7 +203,6 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const choice = arr => arr[Math.floor(Math.random() * arr.length)];
 
 const tank      = document.getElementById("tank");
-const bgWrap    = document.getElementById("bgWrap");
 const fishLayer = document.getElementById("fishLayer");
 const fxCanvas  = document.getElementById("fxCanvas");
 const ctx       = fxCanvas.getContext("2d");
@@ -230,7 +217,7 @@ updateTankRect();
 window.addEventListener("resize", updateTankRect);
 
 /* ===== Coins ===== */
-let coins = 80;
+let coins = 20;
 const coinCountEl = document.getElementById("coinCount");
 coinCountEl.textContent = coins;
 
@@ -310,7 +297,6 @@ function createGuppy() {
     health: "Good",
     ageSeconds: 0,
 
-    // swim mostly in mid water
     x: rand(w * 0.15, w * 0.85),
     y: rand(h * 0.20, h * 0.55),
     direction: Math.random() < 0.5 ? -1 : 1,
@@ -330,7 +316,6 @@ function createGuppy() {
   el.className = "fish";
   f.el = el;
 
-  // tap detection (mobile + pc)
   let downX = 0, downY = 0, downTime = 0;
   el.addEventListener("pointerdown", e => {
     downX = e.clientX;
@@ -414,7 +399,7 @@ function updateFish(dt) {
   }
 }
 
-/* ===== Background FX: sway + calmer bubbles ===== */
+/* ===== Bubbles (no background sway now) ===== */
 let fxTime = 0;
 const bubbles = [];
 
@@ -433,20 +418,13 @@ function spawnBubble() {
   });
 }
 
-// fewer starting bubbles
 for (let i = 0; i < 8; i++) spawnBubble();
 
 function updateFx(dt) {
   fxTime += dt;
 
-  // smooth gentle sway for giant background
-  const swayY = Math.sin(fxTime * 0.12) * 10;
-  const swayX = Math.sin(fxTime * 0.08) * 6;
-  bgWrap.style.transform = `translate(${swayX}px, ${swayY}px)`;
-
   ctx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
 
-  // soft water glow
   const g = ctx.createLinearGradient(0, 0, 0, fxCanvas.height);
   g.addColorStop(0, "rgba(255,255,255,0.10)");
   g.addColorStop(0.35, "rgba(0,0,0,0.03)");
@@ -454,7 +432,6 @@ function updateFx(dt) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, fxCanvas.width, fxCanvas.height);
 
-  // calmer bubble spawn
   if (Math.random() < 2 * dt) spawnBubble();
 
   ctx.save();
