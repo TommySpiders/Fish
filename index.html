@@ -273,9 +273,9 @@
 
     // base speed tuned for mobile: not too slow, not crazy
     let baseSpeed;
-    if (temperament === "Calm")    baseSpeed = rand(20, 26);
-    else if (temperament === "Active") baseSpeed = rand(30, 38);
-    else                           baseSpeed = rand(24, 32);
+    if (temperament === "Calm")         baseSpeed = rand(20, 26);
+    else if (temperament === "Active")  baseSpeed = rand(30, 38);
+    else                                baseSpeed = rand(24, 32);
 
     const fish = {
       id: nextFishId++,
@@ -308,10 +308,35 @@
     el.className = "fish";
     fish.el = el;
 
+    // DESKTOP: normal click
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       showFishInfo(fish);
     });
+
+    // MOBILE: manual tap detection (fixes iPhone not firing click)
+    let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+    el.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      touchStartTime = performance.now();
+    }, { passive: true });
+
+    el.addEventListener("touchend", (e) => {
+      if (e.changedTouches.length !== 1) return;
+      const t = e.changedTouches[0];
+      const dx = Math.abs(t.clientX - touchStartX);
+      const dy = Math.abs(t.clientY - touchStartY);
+      const dt = performance.now() - touchStartTime;
+
+      // treat as a tap if finger did not move much and was quick
+      if (dx < 10 && dy < 10 && dt < 300) {
+        e.stopPropagation();
+        showFishInfo(fish);
+      }
+    }, { passive: false });
 
     fishLayer.appendChild(el);
     fishList.push(fish);
@@ -376,10 +401,10 @@
       const tilt       = wiggleTilt + swimTilt;
 
       /*
-        IMPORTANT for direction:
+        Direction:
         This assumes guppy1.PNG faces RIGHT by default.
-        - direction === 1 (moving right) -> scaleX(1) (no flip)
-        - direction === -1 (moving left) -> scaleX(-1) (flip horizontally)
+        - direction === 1 (moving right)  -> scaleX(1)
+        - direction === -1 (moving left) -> scaleX(-1)
 
         If on your screen they still look backwards,
         change the next line to:
