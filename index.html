@@ -45,7 +45,7 @@
       overflow: hidden;
     }
 
-    /* Tank fills the screen */
+    /* Tank fills whole screen */
     #tank {
       position: absolute;
       inset: 0;
@@ -53,48 +53,35 @@
       background: #002838;
     }
 
-    .bg-layer {
+    /* SINGLE background – smooth animated, no split */
+    #tankBackground {
       position: absolute;
       inset: 0;
-      background-size: cover;
-      /* pull image up a bit so it feels less zoomed on pebbles */
-      background-position: center 70%;
+      background-image: url("background1.PNG");
+      background-size: cover;        /* fill the tank, no bars */
+      background-position: center;   /* nicely centred */
       background-repeat: no-repeat;
       will-change: transform;
       pointer-events: none;
-    }
-
-    #layerBack {
-      background-image: url("background1.PNG");
       z-index: 1;
-    }
-
-    #layerMid {
-      background-image: url("background2.PNG");
-      z-index: 2;
-    }
-
-    #layerFront {
-      background-image: url("background3.PNG");
-      z-index: 3;
     }
 
     #fxCanvas {
       position: absolute;
       inset: 0;
-      z-index: 4; /* bubbles & water glow */
+      z-index: 2;       /* bubbles & water glow */
       pointer-events: none;
     }
 
     #fishLayer {
       position: absolute;
       inset: 0;
-      z-index: 5; /* fish above everything */
+      z-index: 3;       /* fish on top of everything */
     }
 
     .fish {
       position: absolute;
-      width: 115px;   /* slightly smaller so tank feels bigger */
+      width: 115px;
       height: 65px;
       background-image: url("guppy1.PNG");
       background-size: contain;
@@ -119,7 +106,7 @@
       justify-content: center;
       font-size: 22px;
       user-select: none;
-      z-index: 20;
+      z-index: 10;
     }
 
     #feedBtn  { left: 12px; top: 25%; }
@@ -143,7 +130,7 @@
       font-weight: 700;
       color: #5a3900;
       font-size: 11px;
-      z-index: 25;
+      z-index: 11;
       box-shadow: 0 0 13px rgba(255,210,90,0.9);
     }
 
@@ -166,7 +153,7 @@
       max-width: 260px;
       font-size: 13px;
       display: none;
-      z-index: 50;
+      z-index: 20;
       backdrop-filter: blur(8px);
     }
 
@@ -198,9 +185,7 @@
 
 <div id="gameRoot">
   <div id="tank">
-    <div id="layerBack"  class="bg-layer"></div>
-    <div id="layerMid"   class="bg-layer"></div>
-    <div id="layerFront" class="bg-layer"></div>
+    <div id="tankBackground"></div>
     <canvas id="fxCanvas"></canvas>
     <div id="fishLayer"></div>
   </div>
@@ -228,6 +213,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const choice = arr => arr[Math.floor(Math.random() * arr.length)];
 
 const tank      = document.getElementById("tank");
+const tankBg    = document.getElementById("tankBackground");
 const fishLayer = document.getElementById("fishLayer");
 const fxCanvas  = document.getElementById("fxCanvas");
 const ctx       = fxCanvas.getContext("2d");
@@ -341,7 +327,7 @@ function createGuppy() {
   el.className = "fish";
   f.el = el;
 
-  // tap detection (works on mobile + pc)
+  // tap detection (mobile + pc)
   let downX = 0, downY = 0, downTime = 0;
   el.addEventListener("pointerdown", e => {
     downX = e.clientX;
@@ -368,8 +354,8 @@ function updateFish(dt) {
   const h = tankRect.height;
 
   const marginX     = w * 0.06;
-  const topLimit    = h * 0.18;  // can go fairly high
-  const bottomLimit = h * 0.72;  // avoids being cut off at pebbles
+  const topLimit    = h * 0.18;
+  const bottomLimit = h * 0.72;
 
   for (const f of fishList) {
     f.ageSeconds += dt;
@@ -417,20 +403,15 @@ function updateFish(dt) {
     const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.15));
     const tilt       = wiggleTilt + swimTilt;
 
-    // If fish look backwards, flip sign here:
-    const face = -f.direction; // change to f.direction if needed
+    const face = -f.direction; // flip sign if they look backwards
 
-    f.el.style.left = `${f.x - 57.5}px`; // half of 115
-    f.el.style.top  = `${f.y - 32.5}px`; // half of 65
+    f.el.style.left = `${f.x - 57.5}px`;
+    f.el.style.top  = `${f.y - 32.5}px`;
     f.el.style.transform = `scaleX(${face}) rotate(${tilt}deg)`;
   }
 }
 
-/* ===== Background FX (animated) ===== */
-const layerBack  = document.getElementById("layerBack");
-const layerMid   = document.getElementById("layerMid");
-const layerFront = document.getElementById("layerFront");
-
+/* ===== Background FX: smooth sway + bubbles ===== */
 let fxTime = 0;
 const bubbles = [];
 
@@ -453,22 +434,17 @@ for (let i = 0; i < 16; i++) spawnBubble();
 function updateFx(dt) {
   fxTime += dt;
 
-  // stronger, slower sway so plants visibly move
-  const swayBack  = Math.sin(fxTime * 0.10) * 8;
-  const swayMid   = Math.sin(fxTime * 0.14 + 1.3) * 14;
-  const swayFront = Math.sin(fxTime * 0.18 + 2.1) * 20;
+  // smooth gentle sway for whole background
+  const swayY = Math.sin(fxTime * 0.12) * 10;
+  const swayX = Math.sin(fxTime * 0.08) * 6;
+  tankBg.style.transform = `translate(${swayX}px, ${swayY}px)`;
 
-  layerBack.style.transform  = `translateY(${swayBack}px)`;
-  layerMid.style.transform   = `translateY(${swayMid}px)`;
-  layerFront.style.transform = `translateY(${swayFront}px)`;
-
-  // redraw FX
   ctx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
 
-  // soft water glow (no harsh beams now)
+  // soft water glow
   const g = ctx.createLinearGradient(0, 0, 0, fxCanvas.height);
-  g.addColorStop(0, "rgba(255,255,255,0.12)");
-  g.addColorStop(0.4, "rgba(0,0,0,0.05)");
+  g.addColorStop(0, "rgba(255,255,255,0.10)");
+  g.addColorStop(0.35, "rgba(0,0,0,0.03)");
   g.addColorStop(1, "rgba(0,0,0,0.20)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, fxCanvas.width, fxCanvas.height);
