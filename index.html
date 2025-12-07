@@ -43,13 +43,15 @@
       touch-action: none;
     }
 
+    /* Make the world wider AND taller than the screen so we can pan */
     #world {
       position: absolute;
-      inset: 0;
+      left: 0;
+      top: 0;
       width: 300vw;
-      height: 100vh;
+      height: 140vh; /* taller than viewport so we can see more up/down */
       background-image: url("bg-underwater.PNG");
-      background-size: 300vw 100vh;
+      background-size: 300vw 140vh;
       background-repeat: no-repeat;
       transform-origin: top left;
     }
@@ -58,7 +60,7 @@
       position: absolute;
       inset: 0;
       width: 300vw;
-      height: 100vh;
+      height: 140vh;
       pointer-events: none;
     }
 
@@ -96,7 +98,6 @@
     #cleanBtn { left: 10px; top: 42%; }
     #buyBtn   { right: 10px; top: 22%; }
     #shopBtn  { right: 10px; top: 42%; }
-    #musicBtn { right: 10px; bottom: 16px; font-size: 14px; }
 
     #coinBubble {
       position: fixed;
@@ -116,7 +117,13 @@
       z-index: 10;
       font-size: 11px;
     }
-    #coinBubble span { font-size: 14px; }
+    #coinBubble span {
+      font-size: 14px;
+    }
+
+    audio {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -131,15 +138,13 @@
 <div id="cleanBtn" class="bubbleBtn">🧽</div>
 <div id="buyBtn"   class="bubbleBtn">🐠</div>
 <div id="shopBtn"  class="bubbleBtn">🛒</div>
-<div id="musicBtn" class="bubbleBtn">🔊</div>
 
 <div id="coinBubble">🪙<span id="coinCount">80</span></div>
 
-<!-- You must upload a file named bg-music.mp3 into this repo for this to work -->
-<audio id="bgMusic" src="bg-music.mp3" loop></audio>
+<!-- Background music: upload bg-music.mp3 into this repo -->
+<audio id="bgMusic" src="bg-music.mp3" autoplay loop></audio>
 
 <script>
-  /* ---------- helpers ---------- */
   const cameraEl = document.getElementById("camera");
   const worldEl  = document.getElementById("world");
   const fishLayer = document.getElementById("fishLayer");
@@ -150,54 +155,82 @@
   const fishList = [];
   let nextFishId = 1;
 
-  function getWorldWidth()  { return window.innerWidth * 3; }
-  function getWorldHeight() { return window.innerHeight; }
   const rand = (a,b) => a + Math.random()*(b-a);
 
-  /* ---------- camera drag (horizontal only) ---------- */
+  function getWorldWidth()  { return window.innerWidth * 3; }
+  function getWorldHeight() { return window.innerHeight * 1.4; } // matches 140vh
+
+  /* ---- camera: drag in both directions, clamped so no black ---- */
   let camX = 0;
+  let camY = 0;
   const camScale = 1;
 
   function clampCamera() {
     const vw = window.innerWidth;
-    const worldW = getWorldWidth() * camScale;
+    const vh = window.innerHeight;
+
+    const worldW = getWorldWidth()  * camScale;
+    const worldH = getWorldHeight() * camScale;
+
     const minX = vw - worldW;
     const maxX = 0;
+    const minY = vh - worldH;
+    const maxY = 0;
+
     if (worldW <= vw) {
-      camX = (vw - worldW) / 2;
+      camX = (vw - worldW)/2;
     } else {
       camX = Math.max(minX, Math.min(maxX, camX));
     }
+
+    if (worldH <= vh) {
+      camY = (vh - worldH)/2;
+    } else {
+      camY = Math.max(minY, Math.min(maxY, camY));
+    }
   }
+
   function applyCamera() {
-    worldEl.style.transform = `translateX(${camX}px) scale(${camScale})`;
+    worldEl.style.transform = `translate(${camX}px, ${camY}px) scale(${camScale})`;
   }
+
   function centerCamera() {
     const vw = window.innerWidth;
-    const worldW = getWorldWidth() * camScale;
+    const vh = window.innerHeight;
+    const worldW = getWorldWidth()  * camScale;
+    const worldH = getWorldHeight() * camScale;
+
     camX = vw/2 - worldW/2;
+    camY = vh/2 - worldH/2; // start roughly in the middle vertically
     clampCamera();
     applyCamera();
   }
+
   centerCamera();
   window.addEventListener("resize", () => { clampCamera(); applyCamera(); });
 
   let isDragging = false;
   let lastX = 0;
+  let lastY = 0;
 
   cameraEl.addEventListener("touchstart", (e) => {
     if (e.touches.length === 1) {
       isDragging = true;
       lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
     }
   }, {passive:true});
 
   cameraEl.addEventListener("touchmove", (e) => {
     if (!isDragging || e.touches.length !== 1) return;
     const x = e.touches[0].clientX;
+    const y = e.touches[0].clientY;
     const dx = x - lastX;
+    const dy = y - lastY;
     lastX = x;
+    lastY = y;
     camX += dx;
+    camY += dy;
     clampCamera();
     applyCamera();
   }, {passive:true});
@@ -207,18 +240,22 @@
   cameraEl.addEventListener("mousedown", (e) => {
     isDragging = true;
     lastX = e.clientX;
+    lastY = e.clientY;
   });
   window.addEventListener("mousemove", (e) => {
     if (!isDragging) return;
     const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
     lastX = e.clientX;
+    lastY = e.clientY;
     camX += dx;
+    camY += dy;
     clampCamera();
     applyCamera();
   });
   window.addEventListener("mouseup", () => { isDragging = false; });
 
-  /* ---------- fish creation ---------- */
+  /* ---- create guppy ---- */
   function createGuppy() {
     if (coins < 20) return;
     coins -= 20;
@@ -227,27 +264,26 @@
     const w = getWorldWidth();
     const h = getWorldHeight();
 
-    const direction = Math.random() < 0.5 ? 1 : -1; // 1 = right, -1 = left
-
     const fish = {
       id: nextFishId++,
-      x: rand(150, w-150),
-      y: rand(h*0.25, h*0.75),
+      x: rand(150, w - 150),
+      y: rand(h * 0.25, h * 0.75),
 
-      direction,
-      baseSpeed: rand(18, 30),  // natural speed, not zoomy
-      speed: 0,
+      direction: 1,      // 1 = right, -1 = left
+      baseSpeed: rand(22, 34),
 
-      wigglePhase: Math.random()*Math.PI*2,
-      wiggleSpeed: 6,
-      wiggleAmount: 7,
+      targetX: rand(150, w - 150),
+      targetY: rand(h * 0.25, h * 0.9),
+      changeTimer: rand(4, 9),
 
-      targetY: null,
-      driftTimer: 0,
-      burstTimer: rand(3,7),
+      wigglePhase: Math.random() * Math.PI * 2,
+      wiggleSpeed: 5,
+      wiggleAmount: 2,
 
       el: null
     };
+
+    fish.direction = fish.targetX >= fish.x ? 1 : -1;
 
     const el = document.createElement("div");
     el.className = "fish";
@@ -256,98 +292,69 @@
     fishList.push(fish);
   }
 
-  /* ---------- fish movement (schooling + separation) ---------- */
+  /* ---- update guppies: smooth gliding + tiny wiggle ---- */
   function updateGuppies(dt) {
     const w = getWorldWidth();
     const h = getWorldHeight();
 
-    const awarenessRadius = 260;
-    const sepRadius = 90;
-    const verticalTop = h * 0.12;
-    const verticalBottom = h * 0.9;
     const marginX = 150;
+    const topLimit = h * 0.12;
+    const bottomLimit = h * 0.95;
 
     for (const f of fishList) {
-      let neighbors = 0;
-      let avgX = 0, avgY = 0;
-      let sepX = 0, sepY = 0;
-
-      for (const other of fishList) {
-        if (other === f) continue;
-        const dx = other.x - f.x;
-        const dy = other.y - f.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < awarenessRadius) {
-          neighbors++;
-          avgX += other.x;
-          avgY += other.y;
-        }
-        if (dist > 0 && dist < sepRadius) {
-          // push away a bit so they don't stack
-          sepX -= dx / dist;
-          sepY -= dy / dist;
-        }
+      // choose new target sometimes
+      f.changeTimer -= dt;
+      if (f.changeTimer <= 0) {
+        f.targetX = rand(150, w - 150);
+        f.targetY = rand(h * 0.2, h * 0.9);
+        f.direction = f.targetX >= f.x ? 1 : -1;
+        f.changeTimer = rand(4, 9);
       }
 
-      if (neighbors > 0) {
-        avgX /= neighbors;
-        avgY /= neighbors;
+      const dx = f.targetX - f.x;
+      const dy = f.targetY - f.y;
 
-        const dxToSchool = avgX - f.x;
-        if (Math.abs(dxToSchool) > 80) {
-          f.direction = dxToSchool > 0 ? 1 : -1;
-        }
+      const maxStepX = f.baseSpeed * dt;
+      const maxStepY = f.baseSpeed * 0.4 * dt;
 
-        if (f.targetY == null) f.targetY = f.y;
-        f.targetY += (avgY - f.targetY) * 0.02;
-      }
-
-      // random gentle vertical drift
-      f.driftTimer -= dt;
-      if (f.driftTimer <= 0) {
-        if (f.targetY == null) f.targetY = f.y;
-        f.targetY += (Math.random()-0.5)*60;
-        f.targetY = Math.max(verticalTop, Math.min(verticalBottom, f.targetY));
-        f.driftTimer = rand(1.5,3.0);
-      }
-
-      // speed easing + small bursts
-      const targetSpeed = f.baseSpeed;
-      const accel = 20;
-      if (f.speed < targetSpeed) {
-        f.speed = Math.min(targetSpeed, f.speed + accel*dt);
+      if (Math.abs(dx) <= maxStepX) {
+        f.x = f.targetX;
       } else {
-        f.speed = Math.max(targetSpeed, f.speed - accel*dt);
+        f.x += Math.sign(dx) * maxStepX;
       }
 
-      f.burstTimer -= dt;
-      if (f.burstTimer <= 0) {
-        f.speed = targetSpeed * rand(1.1,1.3);
-        f.burstTimer = rand(3,7);
-      }
+      if (dx > 2) f.direction = 1;
+      else if (dx < -2) f.direction = -1;
 
-      // apply separation horizontally & vertically
-      const sepStrength = 55;
-      f.x += f.direction * f.speed * dt + sepX * sepStrength * dt;
-      f.y += (f.targetY - f.y) * 2.5 * dt + sepY * sepStrength * 0.2 * dt;
+      if (Math.abs(dy) <= maxStepY) {
+        f.y = f.targetY;
+      } else {
+        f.y += Math.sign(dy) * maxStepY;
+      }
 
       if (f.x < marginX) {
         f.x = marginX;
+        f.targetX = rand(marginX + 50, w - marginX);
         f.direction = 1;
       } else if (f.x > w - marginX) {
         f.x = w - marginX;
+        f.targetX = rand(marginX, w - marginX - 50);
         f.direction = -1;
       }
-      if (f.y < verticalTop) f.y = verticalTop;
-      if (f.y > verticalBottom) f.y = verticalBottom;
 
-      // tail wiggle
+      if (f.y < topLimit) f.y = topLimit;
+      if (f.y > bottomLimit) f.y = bottomLimit;
+
       f.wigglePhase += f.wiggleSpeed * dt;
-      const tilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
+      const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
+      const swimTilt = Math.max(-10, Math.min(10, -dy * 0.08));
+      const tilt = wiggleTilt + swimTilt;
 
-      // IMPORTANT: guppy image faces LEFT by default.
-      // If yours faces RIGHT, swap -1 and 1 here.
+      // IMPORTANT:
+      // If guppy1.PNG faces LEFT by default, use -1 for right and 1 for left:
       const face = f.direction === 1 ? -1 : 1;
+      // If your image actually faces RIGHT, swap to:
+      // const face = f.direction === 1 ? 1 : -1;
 
       f.el.style.left = `${f.x}px`;
       f.el.style.top  = `${f.y}px`;
@@ -355,18 +362,18 @@
     }
   }
 
-  /* ---------- main loop ---------- */
+  /* ---- main loop ---- */
   let lastTime = null;
   function frame(ts) {
     if (lastTime == null) lastTime = ts;
-    const dt = (ts - lastTime)/1000;
+    const dt = (ts - lastTime) / 1000;
     lastTime = ts;
 
     updateGuppies(dt);
     requestAnimationFrame(frame);
   }
 
-  /* ---------- init ---------- */
+  /* ---- init ---- */
   function init() {
     createGuppy();
     createGuppy();
@@ -375,28 +382,19 @@
   }
   init();
 
-  /* ---------- UI buttons ---------- */
+  // buttons (still simple)
   document.getElementById("buyBtn").onclick = createGuppy;
   document.getElementById("feedBtn").onclick  = () => {};
   document.getElementById("cleanBtn").onclick = () => {};
   document.getElementById("shopBtn").onclick  = () => {};
 
-  // Music toggle
-  const musicEl = document.getElementById("bgMusic");
-  const musicBtn = document.getElementById("musicBtn");
-  let musicOn = false;
-
-  musicBtn.onclick = () => {
-    if (!musicOn) {
-      musicEl.play().catch(()=>{});
-      musicBtn.textContent = "🔈";
-      musicOn = true;
-    } else {
-      musicEl.pause();
-      musicBtn.textContent = "🔊";
-      musicOn = false;
-    }
-  };
+  // music unlock on first interaction (for mobile)
+  const bgMusic = document.getElementById("bgMusic");
+  function unlockMusic() {
+    bgMusic.play().catch(()=>{});
+    window.removeEventListener("pointerdown", unlockMusic);
+  }
+  window.addEventListener("pointerdown", unlockMusic);
 </script>
 </body>
 </html>
