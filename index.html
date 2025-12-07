@@ -19,7 +19,8 @@
       touch-action: none;
       overscroll-behavior: none;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #002838;
+      /* make background similar to tank water so any edges are not obvious */
+      background: #015573;
       color: #fff;
     }
 
@@ -28,7 +29,10 @@
       body::before {
         content: "Rotate your device to play";
         position: fixed;
-        inset: 0;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
         background: #000;
         color: #fff;
         display: flex;
@@ -41,25 +45,34 @@
 
     #gameRoot {
       position: fixed;
-      inset: 0;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
     }
 
     /* Tank fills whole screen */
     #tank {
       position: absolute;
-      inset: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      background: #002838;
+      background: #015573;
     }
 
-    /* SINGLE background – smooth animated, no split */
+    /* SINGLE background – smooth animated */
     #tankBackground {
       position: absolute;
-      inset: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
       background-image: url("background1.PNG");
-      background-size: cover;        /* fill the tank, no bars */
-      background-position: center;   /* nicely centred */
+      background-size: cover;           /* fill the tank */
+      background-position: center 40%;  /* show more open water, less bottom */
       background-repeat: no-repeat;
       will-change: transform;
       pointer-events: none;
@@ -68,14 +81,20 @@
 
     #fxCanvas {
       position: absolute;
-      inset: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
       z-index: 2;       /* bubbles & water glow */
       pointer-events: none;
     }
 
     #fishLayer {
       position: absolute;
-      inset: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
       z-index: 3;       /* fish on top of everything */
     }
 
@@ -308,13 +327,14 @@ function createGuppy() {
     health: "Good",
     ageSeconds: 0,
 
+    // start more in mid-water so tank feels open
     x: rand(w * 0.15, w * 0.85),
-    y: rand(h * 0.30, h * 0.65),
+    y: rand(h * 0.20, h * 0.55),
     direction: Math.random() < 0.5 ? -1 : 1,
 
     baseSpeed,
     targetX: rand(w * 0.15, w * 0.85),
-    targetY: rand(h * 0.30, h * 0.65),
+    targetY: rand(h * 0.20, h * 0.55),
     changeTimer: rand(3, 7),
 
     wigglePhase: Math.random() * Math.PI * 2,
@@ -354,8 +374,8 @@ function updateFish(dt) {
   const h = tankRect.height;
 
   const marginX     = w * 0.06;
-  const topLimit    = h * 0.18;
-  const bottomLimit = h * 0.72;
+  const topLimit    = h * 0.15;  // can go slightly higher
+  const bottomLimit = h * 0.60;  // avoid very bottom so view feels open
 
   for (const f of fishList) {
     f.ageSeconds += dt;
@@ -363,7 +383,7 @@ function updateFish(dt) {
     f.changeTimer -= dt;
     if (f.changeTimer <= 0) {
       f.targetX = rand(w * 0.15, w * 0.85);
-      f.targetY = rand(h * 0.30, h * 0.65);
+      f.targetY = rand(h * 0.20, h * 0.55);
       const baseMin = f.temperament === "Active" ? 2.5 : 4;
       const baseMax = f.temperament === "Active" ? 5   : 7;
       f.changeTimer = rand(baseMin, baseMax);
@@ -411,7 +431,7 @@ function updateFish(dt) {
   }
 }
 
-/* ===== Background FX: smooth sway + bubbles ===== */
+/* ===== Background FX: smooth sway + calmer bubbles ===== */
 let fxTime = 0;
 const bubbles = [];
 
@@ -429,7 +449,9 @@ function spawnBubble() {
     wobbleAmount: rand(3, 8)
   });
 }
-for (let i = 0; i < 16; i++) spawnBubble();
+
+// fewer starting bubbles
+for (let i = 0; i < 8; i++) spawnBubble();
 
 function updateFx(dt) {
   fxTime += dt;
@@ -449,8 +471,8 @@ function updateFx(dt) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, fxCanvas.width, fxCanvas.height);
 
-  // bubbles
-  if (Math.random() < 4 * dt) spawnBubble();
+  // calmer bubble spawn rate
+  if (Math.random() < 2 * dt) spawnBubble();
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -495,6 +517,7 @@ function frame(ts) {
   lastTime = ts;
   if (dt > 0.05) dt = 0.05;
 
+  updateTankRect();
   updateFish(dt);
   updateFx(dt);
 
