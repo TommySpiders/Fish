@@ -29,8 +29,7 @@
 
     body {
       overflow: hidden;
-      /* dark blue instead of pure black so any edges blend in */
-      background: #012437;
+      background: #012437; /* dark blue instead of pure black */
       font-family: system-ui, sans-serif;
       touch-action: none;
       color: #fff;
@@ -44,20 +43,20 @@
       touch-action: none;
     }
 
-    /* Tank is wide AND tall so you can scroll all around */
+    /* Wide + tall tank */
     #world {
       position: absolute;
       left: 0;
       top: 0;
-      width: 400vw;   /* wide tank */
-      height: 200vh;  /* taller tank for more vertical room */
+      width: 400vw;
+      height: 220vh;  /* a bit taller = more scroll down */
       background-image: url("bg-underwater.PNG");
-      background-size: 400vw 200vh;
+      background-size: cover;        /* fill without side bars from image edges */
+      background-position: center;
       background-repeat: no-repeat;
       transform-origin: top left;
     }
 
-    /* Soft top and bottom gradients so scrolling never feels harsh */
     #worldGradients {
       pointer-events: none;
       position: absolute;
@@ -99,7 +98,7 @@
       position: absolute;
       inset: 0;
       width: 400vw;
-      height: 200vh;
+      height: 220vh;
       pointer-events: auto; /* so fish can be clicked */
       z-index: 2;
     }
@@ -177,7 +176,7 @@
       font-size: 13px;
       display: none;
       z-index: 20;
-      min-width: 160px;
+      min-width: 170px;
       text-align: left;
     }
 
@@ -204,7 +203,7 @@
 
 <div id="camera">
   <div id="world">
-    <!-- gradients under fish -->
+    <!-- gradients overlay -->
     <div id="worldGradients">
       <div id="topGradient"></div>
       <div id="bottomGradient"></div>
@@ -244,7 +243,7 @@
   const choice = (arr) => arr[Math.floor(Math.random()*arr.length)];
 
   function getWorldWidth()  { return window.innerWidth * 4; }
-  function getWorldHeight() { return window.innerHeight * 2.0; } // 200vh
+  function getWorldHeight() { return window.innerHeight * 2.2; } // matches ~220vh
 
   /* ---- fish info panel ---- */
   const fishInfoPanel = document.getElementById("fishInfoPanel");
@@ -260,12 +259,15 @@
   }
 
   function showFishInfo(fish) {
+    fishInfoPanel.dataset.fishId = String(fish.id);
     fishInfoTitle.textContent = `${fish.species} (${fish.gender})`;
     const lines = [
       `Name: ${fish.name}`,
       `Health: ${fish.health}`,
       `Age: ${formatAge(fish.ageSeconds)}`,
-      `Temperament: ${fish.temperament}`
+      `Temperament: ${fish.temperament}`,
+      ``,
+      `Tap this panel to rename`
     ];
     fishInfoBody.textContent = lines.join("\n");
     fishInfoPanel.style.display = "block";
@@ -274,6 +276,19 @@
   function hideFishInfo() {
     fishInfoPanel.style.display = "none";
   }
+
+  // Tap panel to rename the fish
+  fishInfoPanel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const id = Number(fishInfoPanel.dataset.fishId || 0);
+    const fish = fishList.find(f => f.id === id);
+    if (!fish) return;
+    const newName = prompt("Enter a new name for this fish:", fish.name);
+    if (!newName) return;
+    fish.name = newName.trim();
+    if (fish.name === "") fish.name = `${fish.species} #${fish.id}`;
+    showFishInfo(fish); // refresh info
+  });
 
   /* ---- camera: drag in both directions, clamped so no edges ---- */
   let camX = 0;
@@ -301,7 +316,9 @@
     if (worldH <= vh) {
       camY = (vh - worldH)/2;
     } else {
-      camY = Math.max(minY, Math.min(maxY, camY));
+      // allow a tiny bit extra downwards so you can see more sand
+      const slack = vh * 0.05;
+      camY = Math.max(minY - slack, Math.min(maxY, camY));
     }
   }
 
@@ -393,11 +410,11 @@
     const species = "Guppy";
     const name = `${species} #${nextFishId}`;
 
-    // base speed by temperament
+    // base speed by temperament (no crazy variation this time)
     let baseSpeed;
     if (temperament === "Calm") baseSpeed = rand(18, 26);
-    else if (temperament === "Active") baseSpeed = rand(26, 38);
-    else baseSpeed = rand(22, 32);
+    else if (temperament === "Active") baseSpeed = rand(26, 34);
+    else baseSpeed = rand(22, 30);
 
     const fish = {
       id: nextFishId++,
@@ -413,9 +430,6 @@
       direction: 1,           // 1 = right, -1 = left
 
       baseSpeed,
-      speedFactor: 1,
-      speedTimer: rand(1.5, 4),
-
       targetX: rand(150, w - 150),
       targetY: rand(h * 0.25, h * 0.9),
       changeTimer: rand(4, 9),
@@ -433,7 +447,7 @@
     el.className = "fish";
     fish.el = el;
 
-    // Make fish clickable: this is what shows the info
+    // Make fish clickable (shows info)
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       showFishInfo(fish);
@@ -443,31 +457,18 @@
     fishList.push(fish);
   }
 
-  /* ---- update guppies: smooth gliding + speed variation ---- */
+  /* ---- update guppies: smooth gliding, no crazy speed jumps ---- */
   function updateGuppies(dt) {
     const w = getWorldWidth();
     const h = getWorldHeight();
 
     const marginX = 150;
     const topLimit = h * 0.12;
-    const bottomLimit = h * 0.97;
+    const bottomLimit = h * 0.92; // keep within visible area near sand
 
     for (const f of fishList) {
       // Age
       f.ageSeconds += dt;
-
-      // random speed variation by temperament
-      f.speedTimer -= dt;
-      if (f.speedTimer <= 0) {
-        let minMul = 0.8, maxMul = 1.2, minTime = 2, maxTime = 4;
-        if (f.temperament === "Calm") {
-          minMul = 0.7; maxMul = 1.1; minTime = 3; maxTime = 6;
-        } else if (f.temperament === "Active") {
-          minMul = 0.8; maxMul = 1.4; minTime = 1.2; maxTime = 3;
-        }
-        f.speedFactor = rand(minMul, maxMul);
-        f.speedTimer = rand(minTime, maxTime);
-      }
 
       // choose new target sometimes
       f.changeTimer -= dt;
@@ -475,17 +476,17 @@
         f.targetX = rand(150, w - 150);
         f.targetY = rand(h * 0.2, h * 0.9);
         f.direction = f.targetX >= f.x ? 1 : -1;
-        const baseMin = f.temperament === "Active" ? 2 : 4;
-        const baseMax = f.temperament === "Active" ? 6 : 9;
+        const baseMin = f.temperament === "Active" ? 3 : 5;
+        const baseMax = f.temperament === "Active" ? 7 : 10;
         f.changeTimer = rand(baseMin, baseMax);
       }
 
       const dx = f.targetX - f.x;
       const dy = f.targetY - f.y;
 
-      const speed = f.baseSpeed * f.speedFactor;
+      const speed = f.baseSpeed;
       const maxStepX = speed * dt;
-      const maxStepY = speed * 0.4 * dt;
+      const maxStepY = speed * 0.35 * dt;
 
       if (Math.abs(dx) <= maxStepX) {
         f.x = f.targetX;
@@ -515,14 +516,15 @@
       if (f.y < topLimit) f.y = topLimit;
       if (f.y > bottomLimit) f.y = bottomLimit;
 
+      // small swim wiggle + tilt
       f.wigglePhase += f.wiggleSpeed * dt;
       const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
       const swimTilt = Math.max(-10, Math.min(10, -dy * 0.08));
       const tilt = wiggleTilt + swimTilt;
 
-      // If guppy1.PNG faces RIGHT by default, this is correct.
-      // If it faces LEFT, swap 1 and -1.
-      const face = f.direction === 1 ? 1 : -1;
+      // IMPORTANT:
+      // If guppy1.PNG faces LEFT by default, this is correct (1 -> flip, -1 -> normal).
+      const face = f.direction === 1 ? -1 : 1;
 
       f.el.style.left = `${f.x}px`;
       f.el.style.top  = `${f.y}px`;
@@ -550,7 +552,7 @@
   }
   init();
 
-  // buttons (behaviour still simple for now)
+  // buttons
   document.getElementById("buyBtn").onclick   = createGuppy;
   document.getElementById("feedBtn").onclick  = () => {};
   document.getElementById("cleanBtn").onclick = () => {};
