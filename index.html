@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 
   <style>
-    /* ======= GENERAL RESET ======= */
     * {
       margin: 0;
       padding: 0;
@@ -24,10 +23,10 @@
       color: #fff;
     }
 
-    /* ======= ROTATE HINT FOR PORTRAIT ======= */
+    /* Rotate hint in portrait */
     @media screen and (orientation: portrait) {
       body::before {
-        content: "Please rotate your device";
+        content: "Rotate your device to play";
         position: fixed;
         inset: 0;
         background: #000;
@@ -35,18 +34,18 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
-        z-index: 99999;
+        font-size: 22px;
+        z-index: 9999;
       }
     }
 
-    /* ======= TANK & LAYERS ======= */
     #gameRoot {
       position: fixed;
       inset: 0;
       overflow: hidden;
     }
 
+    /* Tank fills the screen */
     #tank {
       position: absolute;
       inset: 0;
@@ -61,36 +60,35 @@
       background-position: center bottom;
       background-repeat: no-repeat;
       will-change: transform;
+      pointer-events: none;
     }
 
     #layerBack {
-      background-image: url("background1.PNG"); /* deep water */
+      background-image: url("background1.PNG");
       z-index: 1;
     }
 
     #layerMid {
-      background-image: url("background2.PNG"); /* plants/coral midground */
+      background-image: url("background2.PNG");
       z-index: 2;
     }
 
     #layerFront {
-      background-image: url("background3.PNG"); /* foreground plants/sand */
-      z-index: 5;
-      pointer-events: none; /* don't block touches on fish */
+      background-image: url("background3.PNG");
+      z-index: 3;     /* plants in front of back layers, behind fish */
     }
 
     #fxCanvas {
       position: absolute;
       inset: 0;
-      z-index: 3; /* bubbles & light */
+      z-index: 4;     /* bubbles & light on top of backgrounds */
       pointer-events: none;
     }
 
     #fishLayer {
       position: absolute;
       inset: 0;
-      z-index: 4;
-      pointer-events: none; /* fish themselves handle pointer events */
+      z-index: 5;     /* fish above everything */
     }
 
     .fish {
@@ -102,61 +100,58 @@
       background-repeat: no-repeat;
       background-position: center;
       transform-origin: center center;
-      filter: drop-shadow(0 6px 8px rgba(0,0,0,0.5));
-      pointer-events: auto;
+      filter: drop-shadow(0 6px 8px rgba(0,0,0,0.6));
       cursor: pointer;
     }
 
-    /* ======= UI BUTTONS ======= */
-
+    /* --- UI Bubbles --- */
     .bubbleBtn {
       position: fixed;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #ffffff, #bfe9ff, #5ac5ff);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 0 10px rgba(0,150,255,0.7);
+      background: radial-gradient(circle at 30% 30%, #ffffff, #cfeeff, #60c7ff);
+      border: 2px solid rgba(255,255,255,0.75);
+      box-shadow: 0 0 11px rgba(0,150,255,0.8);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 22px;
       user-select: none;
       z-index: 20;
     }
 
-    #feedBtn  { left: 12px; top: 22%; }
-    #cleanBtn { left: 12px; top: 42%; }
-    #buyBtn   { right: 12px; top: 22%; }
-    #shopBtn  { right: 12px; top: 42%; }
+    #feedBtn  { left: 12px; top: 25%; }
+    #cleanBtn { left: 12px; top: 45%; }
+    #buyBtn   { right: 12px; top: 25%; }
+    #shopBtn  { right: 12px; top: 45%; }
 
     #coinBubble {
       position: fixed;
       top: 16px;
-      right: 20px;
-      width: 54px;
-      height: 54px;
+      right: 18px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: radial-gradient(circle, #fff7b0, #ffcc33);
-      border: 2px solid rgba(255,255,255,0.7);
+      background: radial-gradient(circle, #fff7bf, #ffcc33);
+      border: 2px solid rgba(255,255,255,0.8);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       font-weight: 700;
       color: #5a3900;
-      font-size: 12px;
-      z-index: 30;
-      box-shadow: 0 0 12px rgba(255,210,80,0.8);
+      font-size: 11px;
+      z-index: 25;
+      box-shadow: 0 0 13px rgba(255,210,90,0.9);
     }
 
     #coinBubble span {
-      font-size: 14px;
-      margin-top: 2px;
+      font-size: 15px;
+      margin-top: 3px;
     }
 
-    /* ======= FISH INFO PANEL ======= */
-
+    /* --- Fish info --- */
     #fishInfoPanel {
       position: fixed;
       left: 50%;
@@ -165,7 +160,7 @@
       padding: 10px 14px;
       background: rgba(0,0,0,0.86);
       border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.4);
+      border: 1px solid rgba(255,255,255,0.45);
       min-width: 190px;
       max-width: 260px;
       font-size: 13px;
@@ -195,7 +190,6 @@
       text-align: center;
     }
 
-    /* Hide audio element */
     audio { display: none; }
   </style>
 </head>
@@ -203,8 +197,8 @@
 
 <div id="gameRoot">
   <div id="tank">
-    <div id="layerBack" class="bg-layer"></div>
-    <div id="layerMid" class="bg-layer"></div>
+    <div id="layerBack"  class="bg-layer"></div>
+    <div id="layerMid"   class="bg-layer"></div>
     <div id="layerFront" class="bg-layer"></div>
     <canvas id="fxCanvas"></canvas>
     <div id="fishLayer"></div>
@@ -225,13 +219,12 @@
   </div>
 </div>
 
-<!-- Background music -->
 <audio id="bgMusic" src="bg-music.mp3" loop></audio>
 
 <script>
-/* ================== BASIC HELPERS ================== */
-const rand   = (a, b) => a + Math.random() * (b - a);
-const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+/* ===== Helpers ===== */
+const rand = (a, b) => a + Math.random() * (b - a);
+const choice = arr => arr[Math.floor(Math.random() * arr.length)];
 
 const tank      = document.getElementById("tank");
 const fishLayer = document.getElementById("fishLayer");
@@ -247,16 +240,15 @@ function updateTankRect() {
 updateTankRect();
 window.addEventListener("resize", updateTankRect);
 
-/* ================== COINS ================== */
+/* ===== Coins ===== */
 let coins = 80;
 const coinCountEl = document.getElementById("coinCount");
 coinCountEl.textContent = coins;
 
-/* ================== FISH DATA ================== */
-const fishList = [];
-let nextFishId = 1;
-
-const TEMPERAMENTS = ["Calm", "Normal", "Active"];
+/* ===== Fish Info Panel ===== */
+const fishInfoPanel = document.getElementById("fishInfoPanel");
+const fishInfoTitle = document.getElementById("fishInfoTitle");
+const fishInfoBody  = document.getElementById("fishInfoBody");
 
 function formatAge(sec) {
   if (sec < 60) return `${Math.floor(sec)} sec`;
@@ -266,21 +258,14 @@ function formatAge(sec) {
   return `${h} hr`;
 }
 
-/* ================== FISH INFO PANEL ================== */
-const fishInfoPanel = document.getElementById("fishInfoPanel");
-const fishInfoTitle = document.getElementById("fishInfoTitle");
-const fishInfoBody  = document.getElementById("fishInfoBody");
-
-function showFishInfo(fish) {
-  fishInfoPanel.dataset.fishId = String(fish.id);
-  fishInfoTitle.textContent = `${fish.species} (${fish.gender})`;
-  const lines = [
-    `Name: ${fish.name}`,
-    `Health: ${fish.health}`,
-    `Age: ${formatAge(fish.ageSeconds)}`,
-    `Temperament: ${fish.temperament}`
-  ];
-  fishInfoBody.textContent = lines.join("\n");
+function showFishInfo(f) {
+  fishInfoPanel.dataset.fishId = String(f.id);
+  fishInfoTitle.textContent = `${f.species} (${f.gender})`;
+  fishInfoBody.textContent =
+    `Name: ${f.name}\n` +
+    `Health: ${f.health}\n` +
+    `Age: ${formatAge(f.ageSeconds)}\n` +
+    `Temperament: ${f.temperament}`;
   fishInfoPanel.style.display = "block";
 }
 
@@ -288,23 +273,27 @@ function hideFishInfo() {
   fishInfoPanel.style.display = "none";
 }
 
-fishInfoPanel.addEventListener("click", (e) => {
+fishInfoPanel.addEventListener("click", e => {
   e.stopPropagation();
   const id = Number(fishInfoPanel.dataset.fishId || 0);
-  const fish = fishList.find(f => f.id === id);
-  if (!fish) return;
-  const newName = prompt("Enter a new name:", fish.name);
+  const f = fishList.find(x => x.id === id);
+  if (!f) return;
+  const newName = prompt("Enter a new name:", f.name);
   if (!newName) return;
-  fish.name = newName.trim() || fish.name;
-  showFishInfo(fish);
+  f.name = newName.trim() || f.name;
+  showFishInfo(f);
 });
 
-document.getElementById("gameRoot").addEventListener("click", (e) => {
+document.getElementById("gameRoot").addEventListener("click", e => {
   if (e.target.classList.contains("fish")) return;
   hideFishInfo();
 });
 
-/* ================== CREATE GUPPY ================== */
+/* ===== Fish Data & Creation ===== */
+const fishList = [];
+let nextFishId = 1;
+const TEMPERAMENTS = ["Calm", "Normal", "Active"];
+
 function createGuppy() {
   if (coins < 20) return;
   coins -= 20;
@@ -319,11 +308,11 @@ function createGuppy() {
   const name        = `${species} #${nextFishId}`;
 
   let baseSpeed;
-  if (temperament === "Calm")        baseSpeed = rand(22, 28);
+  if      (temperament === "Calm")   baseSpeed = rand(22, 28);
   else if (temperament === "Active") baseSpeed = rand(32, 40);
   else                               baseSpeed = rand(26, 34);
 
-  const fish = {
+  const f = {
     id: nextFishId++,
     species,
     name,
@@ -333,73 +322,69 @@ function createGuppy() {
     ageSeconds: 0,
 
     x: rand(w * 0.15, w * 0.85),
-    y: rand(h * 0.25, h * 0.65),
+    y: rand(h * 0.30, h * 0.70),
     direction: Math.random() < 0.5 ? -1 : 1,
 
     baseSpeed,
     targetX: rand(w * 0.15, w * 0.85),
-    targetY: rand(h * 0.25, h * 0.65),
+    targetY: rand(h * 0.30, h * 0.70),
     changeTimer: rand(3, 7),
 
     wigglePhase: Math.random() * Math.PI * 2,
     wiggleSpeed: rand(4, 6),
     wiggleAmount: 3,
-
     el: null
   };
 
   const el = document.createElement("div");
   el.className = "fish";
-  fish.el = el;
+  f.el = el;
 
-  /* Pointer-based tap detection (works on phone + PC) */
-  let pointerDownX = 0, pointerDownY = 0, pointerDownTime = 0;
-  el.addEventListener("pointerdown", (e) => {
-    pointerDownX = e.clientX;
-    pointerDownY = e.clientY;
-    pointerDownTime = performance.now();
+  // tap detection (works on mobile + pc)
+  let downX = 0, downY = 0, downTime = 0;
+  el.addEventListener("pointerdown", e => {
+    downX = e.clientX;
+    downY = e.clientY;
+    downTime = performance.now();
   });
-  el.addEventListener("pointerup", (e) => {
-    const dx = Math.abs(e.clientX - pointerDownX);
-    const dy = Math.abs(e.clientY - pointerDownY);
-    const dt = performance.now() - pointerDownTime;
+  el.addEventListener("pointerup", e => {
+    const dx = Math.abs(e.clientX - downX);
+    const dy = Math.abs(e.clientY - downY);
+    const dt = performance.now() - downTime;
     if (dx < 10 && dy < 10 && dt < 250) {
       e.stopPropagation();
-      showFishInfo(fish);
+      showFishInfo(f);
     }
   });
 
   fishLayer.appendChild(el);
-  fishList.push(fish);
+  fishList.push(f);
 }
 
-/* ================== FISH UPDATE ================== */
+/* ===== Fish Movement ===== */
 function updateFish(dt) {
   const w = tankRect.width;
   const h = tankRect.height;
 
   const marginX     = w * 0.06;
-  const topLimit    = h * 0.18;
-  const bottomLimit = h * 0.80;
+  const topLimit    = h * 0.22;
+  const bottomLimit = h * 0.82;
 
   for (const f of fishList) {
     f.ageSeconds += dt;
 
-    // change target occasionally
     f.changeTimer -= dt;
     if (f.changeTimer <= 0) {
       f.targetX = rand(w * 0.15, w * 0.85);
-      f.targetY = rand(h * 0.25, h * 0.65);
-
+      f.targetY = rand(h * 0.30, h * 0.70);
       const baseMin = f.temperament === "Active" ? 2.5 : 4;
-      const baseMax = f.temperament === "Active" ? 5 : 7;
+      const baseMax = f.temperament === "Active" ? 5   : 7;
       f.changeTimer = rand(baseMin, baseMax);
     }
 
     const dx = f.targetX - f.x;
     const dy = f.targetY - f.y;
 
-    // smooth step
     const speed    = f.baseSpeed;
     const maxStepX = speed * dt;
     const maxStepY = speed * 0.35 * dt;
@@ -410,52 +395,42 @@ function updateFish(dt) {
     if (Math.abs(dy) <= maxStepY) f.y = f.targetY;
     else f.y += Math.sign(dy) * maxStepY;
 
-    // turn based on movement
     if (dx > 2)      f.direction = 1;
     else if (dx < -2) f.direction = -1;
 
-    // keep inside tank
     if (f.x < marginX) {
       f.x = marginX;
-      f.targetX = rand(marginX + 30, w - marginX);
+      f.targetX   = rand(marginX + 30, w - marginX);
       f.direction = 1;
     } else if (f.x > w - marginX) {
       f.x = w - marginX;
-      f.targetX = rand(marginX, w - marginX - 30);
+      f.targetX   = rand(marginX, w - marginX - 30);
       f.direction = -1;
     }
 
     if (f.y < topLimit)    f.y = topLimit;
     if (f.y > bottomLimit) f.y = bottomLimit;
 
-    // wiggle + tilt
     f.wigglePhase += f.wiggleSpeed * dt;
     const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
-    const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.12));
+    const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.15));
     const tilt       = wiggleTilt + swimTilt;
 
-    /* IMPORTANT:
-       If your guppy image faces RIGHT by default, use:
-         const face = f.direction;
-       If it faces LEFT by default, use:
-         const face = -f.direction;
-       Try one; if they still look like they're swimming backwards,
-       switch to the other.
-    */
-    const face = -f.direction;  // <-- change to f.direction if needed
+    // IMPORTANT: if fish look backwards, flip sign here:
+    const face = -f.direction; // try f.direction if needed
 
-    f.el.style.left = `${f.x - 70}px`; // center by width/2
-    f.el.style.top  = `${f.y - 40}px`; // center by height/2
+    f.el.style.left = `${f.x - 70}px`;
+    f.el.style.top  = `${f.y - 40}px`;
     f.el.style.transform = `scaleX(${face}) rotate(${tilt}deg)`;
   }
 }
 
-/* ================== PARALLAX & FX ================== */
-let parallaxTime = 0;
+/* ===== Background FX (animated) ===== */
 const layerBack  = document.getElementById("layerBack");
 const layerMid   = document.getElementById("layerMid");
 const layerFront = document.getElementById("layerFront");
 
+let fxTime = 0;
 const bubbles = [];
 
 function spawnBubble() {
@@ -472,45 +447,44 @@ function spawnBubble() {
     wobbleAmount: rand(3, 8)
   });
 }
-
-for (let i = 0; i < 18; i++) spawnBubble();
+for (let i = 0; i < 16; i++) spawnBubble();
 
 function updateFx(dt) {
-  parallaxTime += dt;
+  fxTime += dt;
 
-  // gentle parallax sway
-  const swayBack  = Math.sin(parallaxTime * 0.12) * 4;
-  const swayMid   = Math.sin(parallaxTime * 0.18 + 1.2) * 8;
-  const swayFront = Math.sin(parallaxTime * 0.25 + 2.4) * 14;
+  // gentle vertical sway for parallax
+  const swayBack  = Math.sin(fxTime * 0.12) * 4;
+  const swayMid   = Math.sin(fxTime * 0.18 + 1.3) * 8;
+  const swayFront = Math.sin(fxTime * 0.24 + 2.1) * 12;
 
   layerBack.style.transform  = `translateY(${swayBack}px)`;
   layerMid.style.transform   = `translateY(${swayMid}px)`;
   layerFront.style.transform = `translateY(${swayFront}px)`;
 
-  // bubbles + caustics
+  // redraw FX
   ctx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
 
-  // light caustics overlay
-  const grad = ctx.createLinearGradient(0, 0, fxCanvas.width, fxCanvas.height);
-  grad.addColorStop(0, "rgba(255,255,255,0.08)");
-  grad.addColorStop(1, "rgba(0,0,0,0.2)");
-  ctx.fillStyle = grad;
+  // soft caustic gradient
+  const g = ctx.createLinearGradient(0, 0, fxCanvas.width, fxCanvas.height);
+  g.addColorStop(0, "rgba(255,255,255,0.08)");
+  g.addColorStop(1, "rgba(0,0,0,0.20)");
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, fxCanvas.width, fxCanvas.height);
 
-  // animated light streaks
+  // moving light beams
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  const beamCount = 5;
-  for (let i = 0; i < beamCount; i++) {
-    const phase = parallaxTime * 0.1 + i * 1.1;
+  ctx.fillStyle = "rgba(255,255,255,0.11)";
+  const beams = 5;
+  for (let i = 0; i < beams; i++) {
+    const phase = fxTime * 0.10 + i * 1.2;
     const x = (Math.sin(phase) * 0.4 + 0.5) * fxCanvas.width;
-    const width = fxCanvas.width * 0.15;
+    const w = fxCanvas.width * 0.16;
     ctx.beginPath();
-    ctx.moveTo(x - width, 0);
-    ctx.lineTo(x + width, 0);
-    ctx.lineTo(x + width * 0.2, fxCanvas.height);
-    ctx.lineTo(x - width * 0.2, fxCanvas.height);
+    ctx.moveTo(x - w, 0);
+    ctx.lineTo(x + w, 0);
+    ctx.lineTo(x + w * 0.25, fxCanvas.height);
+    ctx.lineTo(x - w * 0.25, fxCanvas.height);
     ctx.closePath();
     ctx.fill();
   }
@@ -534,11 +508,11 @@ function updateFx(dt) {
 
     ctx.beginPath();
     ctx.arc(b.x + wobbleX, b.y, b.size, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    const gradBubble = ctx.createRadialGradient(
+    const gb = ctx.createRadialGradient(
       b.x + wobbleX - b.size * 0.4,
       b.y - b.size * 0.4,
       0,
@@ -546,21 +520,21 @@ function updateFx(dt) {
       b.y,
       b.size
     );
-    gradBubble.addColorStop(0, "rgba(255,255,255,0.4)");
-    gradBubble.addColorStop(1, "rgba(255,255,255,0.05)");
-    ctx.fillStyle = gradBubble;
+    gb.addColorStop(0, "rgba(255,255,255,0.45)");
+    gb.addColorStop(1, "rgba(255,255,255,0.05)");
+    ctx.fillStyle = gb;
     ctx.fill();
   }
   ctx.restore();
 }
 
-/* ================== MAIN LOOP ================== */
+/* ===== Main Loop ===== */
 let lastTime = null;
 function frame(ts) {
   if (lastTime == null) lastTime = ts;
   let dt = (ts - lastTime) / 1000;
   lastTime = ts;
-  if (dt > 0.05) dt = 0.05; // clamp
+  if (dt > 0.05) dt = 0.05;
 
   updateFish(dt);
   updateFx(dt);
@@ -568,7 +542,7 @@ function frame(ts) {
   requestAnimationFrame(frame);
 }
 
-/* ================== INIT ================== */
+/* ===== Init ===== */
 function initGame() {
   updateTankRect();
   createGuppy();
@@ -578,20 +552,22 @@ function initGame() {
 }
 initGame();
 
-/* ================== BUTTONS ================== */
+/* ===== UI Buttons ===== */
 document.getElementById("buyBtn").addEventListener("click", createGuppy);
+
 document.getElementById("feedBtn").addEventListener("click", () => {
-  // placeholder: later we can lower hunger, increase health, etc.
   alert("Feeding all fish (placeholder)");
 });
+
 document.getElementById("cleanBtn").addEventListener("click", () => {
   alert("Cleaning tank (placeholder)");
 });
+
 document.getElementById("shopBtn").addEventListener("click", () => {
   alert("Shop coming soon!");
 });
 
-/* ================== MUSIC AUTOPLAY UNLOCK ================== */
+/* ===== Music unlock on first touch (mobile) ===== */
 const bgMusic = document.getElementById("bgMusic");
 function unlockMusic() {
   bgMusic.play().catch(() => {});
