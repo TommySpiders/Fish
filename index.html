@@ -29,7 +29,8 @@
 
     body {
       overflow: hidden;
-      background: #000;
+      /* dark blue instead of pure black so any edges blend in */
+      background: #012437;
       font-family: system-ui, sans-serif;
       touch-action: none;
       color: #fff;
@@ -49,19 +50,58 @@
       left: 0;
       top: 0;
       width: 400vw;   /* wide tank */
-      height: 180vh;  /* tall tank so sand is reachable */
+      height: 200vh;  /* taller tank for more vertical room */
       background-image: url("bg-underwater.PNG");
-      background-size: 400vw 180vh;
+      background-size: 400vw 200vh;
       background-repeat: no-repeat;
       transform-origin: top left;
+    }
+
+    /* Soft top and bottom gradients so scrolling never feels harsh */
+    #worldGradients {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    #topGradient,
+    #bottomGradient {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    #topGradient {
+      top: 0;
+      height: 18vh;
+      background: linear-gradient(to bottom,
+        rgba(0, 40, 80, 0.9),
+        rgba(0, 40, 80, 0.3),
+        transparent
+      );
+    }
+
+    #bottomGradient {
+      bottom: 0;
+      height: 18vh;
+      background: linear-gradient(to top,
+        rgba(0, 25, 40, 0.95),
+        rgba(0, 25, 40, 0.4),
+        transparent
+      );
     }
 
     #fishLayer {
       position: absolute;
       inset: 0;
       width: 400vw;
-      height: 180vh;
+      height: 200vh;
       pointer-events: auto; /* so fish can be clicked */
+      z-index: 2;
     }
 
     .fish {
@@ -130,7 +170,7 @@
       top: 10%;
       transform: translateX(-50%);
       padding: 10px 14px;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.8);
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.4);
       color: #fff;
@@ -152,6 +192,7 @@
       font-size: 12px;
       opacity: 0.95;
       line-height: 1.4;
+      white-space: pre-line;
     }
 
     audio {
@@ -163,6 +204,11 @@
 
 <div id="camera">
   <div id="world">
+    <!-- gradients under fish -->
+    <div id="worldGradients">
+      <div id="topGradient"></div>
+      <div id="bottomGradient"></div>
+    </div>
     <div id="fishLayer"></div>
   </div>
 </div>
@@ -198,7 +244,7 @@
   const choice = (arr) => arr[Math.floor(Math.random()*arr.length)];
 
   function getWorldWidth()  { return window.innerWidth * 4; }
-  function getWorldHeight() { return window.innerHeight * 1.8; } // 180vh
+  function getWorldHeight() { return window.innerHeight * 2.0; } // 200vh
 
   /* ---- fish info panel ---- */
   const fishInfoPanel = document.getElementById("fishInfoPanel");
@@ -222,7 +268,6 @@
       `Temperament: ${fish.temperament}`
     ];
     fishInfoBody.textContent = lines.join("\n");
-    fishInfoPanel.style.whiteSpace = "pre-line";
     fishInfoPanel.style.display = "block";
   }
 
@@ -230,7 +275,7 @@
     fishInfoPanel.style.display = "none";
   }
 
-  /* ---- camera: drag in both directions, clamped so no black ---- */
+  /* ---- camera: drag in both directions, clamped so no edges ---- */
   let camX = 0;
   let camY = 0;
   const camScale = 1;
@@ -271,7 +316,7 @@
     const worldH = getWorldHeight() * camScale;
 
     camX = vw/2 - worldW/2;
-    camY = vh/2 - worldH/2; // center so you can go up & down
+    camY = vh/2 - worldH/2;
     clampCamera();
     applyCamera();
   }
@@ -327,7 +372,7 @@
 
   window.addEventListener("mouseup", () => { isDragging = false; });
 
-  // Hide info when tapping empty water (but not when dragging or tapping a fish)
+  // Hide info when tapping empty water (but not when tapping a fish)
   cameraEl.addEventListener("click", (e) => {
     if (e.target.classList.contains("fish")) return;
     hideFishInfo();
@@ -369,7 +414,7 @@
 
       baseSpeed,
       speedFactor: 1,
-      speedTimer: rand(1.5, 4),  // time until next speed change
+      speedTimer: rand(1.5, 4),
 
       targetX: rand(150, w - 150),
       targetY: rand(h * 0.25, h * 0.9),
@@ -388,7 +433,7 @@
     el.className = "fish";
     fish.el = el;
 
-    // Make fish clickable
+    // Make fish clickable: this is what shows the info
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       showFishInfo(fish);
@@ -405,7 +450,7 @@
 
     const marginX = 150;
     const topLimit = h * 0.12;
-    const bottomLimit = h * 0.97; // just above very bottom
+    const bottomLimit = h * 0.97;
 
     for (const f of fishList) {
       // Age
@@ -430,7 +475,6 @@
         f.targetX = rand(150, w - 150);
         f.targetY = rand(h * 0.2, h * 0.9);
         f.direction = f.targetX >= f.x ? 1 : -1;
-        // active fish change direction more often
         const baseMin = f.temperament === "Active" ? 2 : 4;
         const baseMax = f.temperament === "Active" ? 6 : 9;
         f.changeTimer = rand(baseMin, baseMax);
@@ -476,8 +520,8 @@
       const swimTilt = Math.max(-10, Math.min(10, -dy * 0.08));
       const tilt = wiggleTilt + swimTilt;
 
-      // If guppy1.PNG faces LEFT by default, this line is correct.
-      // If it faces RIGHT, swap 1 and -1.
+      // If guppy1.PNG faces RIGHT by default, this is correct.
+      // If it faces LEFT, swap 1 and -1.
       const face = f.direction === 1 ? 1 : -1;
 
       f.el.style.left = `${f.x}px`;
