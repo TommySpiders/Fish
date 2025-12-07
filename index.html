@@ -6,21 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 
   <style>
-    @media screen and (orientation: portrait) {
-      body::before {
-        content: "Please rotate your device";
-        position: fixed;
-        inset: 0;
-        background: #000;
-        color: #fff;
-        font-size: 26px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-      }
-    }
-
+    /* ======= GENERAL RESET ======= */
     * {
       margin: 0;
       padding: 0;
@@ -30,45 +16,81 @@
     html, body {
       width: 100%;
       height: 100%;
+      overflow: hidden;
       touch-action: none;
       overscroll-behavior: none;
-      overflow: hidden;
-    }
-
-    body {
-      background: #004b68; /* water-coloured behind the tank */
-      font-family: system-ui, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #002838;
       color: #fff;
     }
 
-    /* Tank fills the screen (no scrolling) */
-    #camera {
+    /* ======= ROTATE HINT FOR PORTRAIT ======= */
+    @media screen and (orientation: portrait) {
+      body::before {
+        content: "Please rotate your device";
+        position: fixed;
+        inset: 0;
+        background: #000;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        z-index: 99999;
+      }
+    }
+
+    /* ======= TANK & LAYERS ======= */
+    #gameRoot {
       position: fixed;
       inset: 0;
       overflow: hidden;
-      touch-action: none;
     }
 
-    #world {
+    #tank {
       position: absolute;
-      left: 0;
-      top: 0;
-      width: 100vw;
-      height: 100vh;
-      background-image: url("bg-underwater.PNG");
-      background-size: contain;          /* show the whole image */
+      inset: 0;
+      overflow: hidden;
+      background: #002838;
+    }
+
+    .bg-layer {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center bottom;
       background-repeat: no-repeat;
-      background-position: center bottom;/* keep sand at the bottom */
-      background-color: #004b68;         /* same water colour behind */
+      will-change: transform;
+    }
+
+    #layerBack {
+      background-image: url("background1.PNG"); /* deep water */
+      z-index: 1;
+    }
+
+    #layerMid {
+      background-image: url("background2.PNG"); /* plants/coral midground */
+      z-index: 2;
+    }
+
+    #layerFront {
+      background-image: url("background3.PNG"); /* foreground plants/sand */
+      z-index: 5;
+      pointer-events: none; /* don't block touches on fish */
+    }
+
+    #fxCanvas {
+      position: absolute;
+      inset: 0;
+      z-index: 3; /* bubbles & light */
+      pointer-events: none;
     }
 
     #fishLayer {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: auto;
-      z-index: 2;
+      z-index: 4;
+      pointer-events: none; /* fish themselves handle pointer events */
     }
 
     .fish {
@@ -79,379 +101,503 @@
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
-      transform-origin: center;
-      pointer-events: auto;
+      transform-origin: center center;
       filter: drop-shadow(0 6px 8px rgba(0,0,0,0.5));
+      pointer-events: auto;
       cursor: pointer;
     }
+
+    /* ======= UI BUTTONS ======= */
 
     .bubbleBtn {
       position: fixed;
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #fff, #aee2ff, #58c1ff);
-      border: 2px solid rgba(255,255,255,0.6);
-      box-shadow: 0 0 10px rgba(0,140,255,0.6);
+      background: radial-gradient(circle at 30% 30%, #ffffff, #bfe9ff, #5ac5ff);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 0 10px rgba(0,150,255,0.7);
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      z-index: 5;
-      font-size: 18px;
+      font-size: 20px;
       user-select: none;
+      z-index: 20;
     }
 
-    #feedBtn  { left: 10px; top: 22%; }
-    #cleanBtn { left: 10px; top: 42%; }
-    #buyBtn   { right: 10px; top: 22%; }
-    #shopBtn  { right: 10px; top: 42%; }
+    #feedBtn  { left: 12px; top: 22%; }
+    #cleanBtn { left: 12px; top: 42%; }
+    #buyBtn   { right: 12px; top: 22%; }
+    #shopBtn  { right: 12px; top: 42%; }
 
     #coinBubble {
       position: fixed;
-      top: 15px;
+      top: 16px;
       right: 20px;
-      width: 50px;
-      height: 50px;
+      width: 54px;
+      height: 54px;
       border-radius: 50%;
-      background: radial-gradient(circle, #fff4a6, #e1a800);
-      border: 2px solid rgba(255,255,255,0.6);
+      background: radial-gradient(circle, #fff7b0, #ffcc33);
+      border: 2px solid rgba(255,255,255,0.7);
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      color: #603800;
-      font-weight: bold;
-      z-index: 10;
-      font-size: 11px;
+      justify-content: center;
+      font-weight: 700;
+      color: #5a3900;
+      font-size: 12px;
+      z-index: 30;
+      box-shadow: 0 0 12px rgba(255,210,80,0.8);
     }
 
     #coinBubble span {
       font-size: 14px;
+      margin-top: 2px;
     }
 
-    /* Fish info panel */
+    /* ======= FISH INFO PANEL ======= */
+
     #fishInfoPanel {
       position: fixed;
       left: 50%;
       top: 10%;
       transform: translateX(-50%);
       padding: 10px 14px;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0,0,0,0.86);
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.4);
-      color: #fff;
+      min-width: 190px;
+      max-width: 260px;
       font-size: 13px;
       display: none;
-      z-index: 20;
-      min-width: 170px;
+      z-index: 50;
+      backdrop-filter: blur(8px);
     }
 
     #fishInfoTitle {
       font-weight: 600;
-      margin-bottom: 6px;
       font-size: 14px;
+      margin-bottom: 4px;
       text-align: center;
     }
 
     #fishInfoBody {
-      font-size: 12px;
+      white-space: pre-line;
       opacity: 0.95;
       line-height: 1.4;
-      white-space: pre-line;
-      text-align: left;
+      font-size: 12px;
     }
 
-    audio {
-      display: none;
+    #fishInfoHint {
+      margin-top: 6px;
+      font-size: 11px;
+      opacity: 0.7;
+      text-align: center;
     }
+
+    /* Hide audio element */
+    audio { display: none; }
   </style>
 </head>
 <body>
 
-<div id="camera">
-  <div id="world">
+<div id="gameRoot">
+  <div id="tank">
+    <div id="layerBack" class="bg-layer"></div>
+    <div id="layerMid" class="bg-layer"></div>
+    <div id="layerFront" class="bg-layer"></div>
+    <canvas id="fxCanvas"></canvas>
     <div id="fishLayer"></div>
+  </div>
+
+  <!-- UI -->
+  <div id="coinBubble">🪙<span id="coinCount">80</span></div>
+  <div id="feedBtn"  class="bubbleBtn">🍤</div>
+  <div id="cleanBtn" class="bubbleBtn">🧽</div>
+  <div id="buyBtn"   class="bubbleBtn">🐠</div>
+  <div id="shopBtn"  class="bubbleBtn">🛒</div>
+
+  <!-- Fish info -->
+  <div id="fishInfoPanel">
+    <div id="fishInfoTitle">Guppy</div>
+    <div id="fishInfoBody"></div>
+    <div id="fishInfoHint">Tap this panel to rename</div>
   </div>
 </div>
 
-<div id="feedBtn"  class="bubbleBtn">🍤</div>
-<div id="cleanBtn" class="bubbleBtn">🧽</div>
-<div id="buyBtn"   class="bubbleBtn">🐠</div>
-<div id="shopBtn"  class="bubbleBtn">🛒</div>
-
-<div id="coinBubble">🪙<span id="coinCount">80</span></div>
-
-<!-- Fish info -->
-<div id="fishInfoPanel">
-  <div id="fishInfoTitle">Guppy</div>
-  <div id="fishInfoBody"></div>
-</div>
-
 <!-- Background music -->
-<audio id="bgMusic" src="bg-music.mp3" autoplay loop></audio>
+<audio id="bgMusic" src="bg-music.mp3" loop></audio>
 
 <script>
-  const worldEl   = document.getElementById("world");
-  const fishLayer = document.getElementById("fishLayer");
+/* ================== BASIC HELPERS ================== */
+const rand   = (a, b) => a + Math.random() * (b - a);
+const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  let coins = 80;
-  document.getElementById("coinCount").textContent = coins;
+const tank      = document.getElementById("tank");
+const fishLayer = document.getElementById("fishLayer");
+const fxCanvas  = document.getElementById("fxCanvas");
+const ctx       = fxCanvas.getContext("2d");
+let tankRect    = tank.getBoundingClientRect();
 
-  const fishList = [];
-  let nextFishId = 1;
+function updateTankRect() {
+  tankRect = tank.getBoundingClientRect();
+  fxCanvas.width  = tankRect.width;
+  fxCanvas.height = tankRect.height;
+}
+updateTankRect();
+window.addEventListener("resize", updateTankRect);
 
-  const rand   = (a,b) => a + Math.random()*(b-a);
-  const choice = (arr) => arr[Math.floor(Math.random()*arr.length)];
+/* ================== COINS ================== */
+let coins = 80;
+const coinCountEl = document.getElementById("coinCount");
+coinCountEl.textContent = coins;
 
-  function getWorldWidth()  { return worldEl.getBoundingClientRect().width; }
-  function getWorldHeight() { return worldEl.getBoundingClientRect().height; }
+/* ================== FISH DATA ================== */
+const fishList = [];
+let nextFishId = 1;
 
-  /* ---- fish info panel ---- */
-  const fishInfoPanel = document.getElementById("fishInfoPanel");
-  const fishInfoTitle = document.getElementById("fishInfoTitle");
-  const fishInfoBody  = document.getElementById("fishInfoBody");
+const TEMPERAMENTS = ["Calm", "Normal", "Active"];
 
-  function formatAge(seconds) {
-    if (seconds < 60) return `${Math.floor(seconds)} sec`;
-    const mins = Math.floor(seconds / 60);
-    if (mins < 60) return `${mins} min`;
-    const hours = Math.floor(mins / 60);
-    return `${hours} hr`;
-  }
+function formatAge(sec) {
+  if (sec < 60) return `${Math.floor(sec)} sec`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return `${h} hr`;
+}
 
-  function showFishInfo(fish) {
-    fishInfoPanel.dataset.fishId = String(fish.id);
-    fishInfoTitle.textContent = `${fish.species} (${fish.gender})`;
-    const lines = [
-      `Species: ${fish.species}`,
-      `Name: ${fish.name}`,
-      `Gender: ${fish.gender}`,
-      `Health: ${fish.health}`,
-      `Age: ${formatAge(fish.ageSeconds)}`,
-      `Temperament: ${fish.temperament}`,
-      ``,
-      `Tap this panel to rename`
-    ];
-    fishInfoBody.textContent = lines.join("\n");
-    fishInfoPanel.style.display = "block";
-  }
+/* ================== FISH INFO PANEL ================== */
+const fishInfoPanel = document.getElementById("fishInfoPanel");
+const fishInfoTitle = document.getElementById("fishInfoTitle");
+const fishInfoBody  = document.getElementById("fishInfoBody");
 
-  function hideFishInfo() {
-    fishInfoPanel.style.display = "none";
-  }
+function showFishInfo(fish) {
+  fishInfoPanel.dataset.fishId = String(fish.id);
+  fishInfoTitle.textContent = `${fish.species} (${fish.gender})`;
+  const lines = [
+    `Name: ${fish.name}`,
+    `Health: ${fish.health}`,
+    `Age: ${formatAge(fish.ageSeconds)}`,
+    `Temperament: ${fish.temperament}`
+  ];
+  fishInfoBody.textContent = lines.join("\n");
+  fishInfoPanel.style.display = "block";
+}
 
-  // Tap panel to rename fish
-  fishInfoPanel.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const id = Number(fishInfoPanel.dataset.fishId || 0);
-    const fish = fishList.find(f => f.id === id);
-    if (!fish) return;
-    const newName = prompt("Enter a new name for this fish:", fish.name);
-    if (!newName) return;
-    fish.name = newName.trim() || `${fish.species} #${fish.id}`;
-    showFishInfo(fish);
+function hideFishInfo() {
+  fishInfoPanel.style.display = "none";
+}
+
+fishInfoPanel.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const id = Number(fishInfoPanel.dataset.fishId || 0);
+  const fish = fishList.find(f => f.id === id);
+  if (!fish) return;
+  const newName = prompt("Enter a new name:", fish.name);
+  if (!newName) return;
+  fish.name = newName.trim() || fish.name;
+  showFishInfo(fish);
+});
+
+document.getElementById("gameRoot").addEventListener("click", (e) => {
+  if (e.target.classList.contains("fish")) return;
+  hideFishInfo();
+});
+
+/* ================== CREATE GUPPY ================== */
+function createGuppy() {
+  if (coins < 20) return;
+  coins -= 20;
+  coinCountEl.textContent = coins;
+
+  const w = tankRect.width;
+  const h = tankRect.height;
+
+  const gender      = Math.random() < 0.6 ? "Female" : "Male";
+  const temperament = choice(TEMPERAMENTS);
+  const species     = "Guppy";
+  const name        = `${species} #${nextFishId}`;
+
+  let baseSpeed;
+  if (temperament === "Calm")        baseSpeed = rand(22, 28);
+  else if (temperament === "Active") baseSpeed = rand(32, 40);
+  else                               baseSpeed = rand(26, 34);
+
+  const fish = {
+    id: nextFishId++,
+    species,
+    name,
+    gender,
+    temperament,
+    health: "Good",
+    ageSeconds: 0,
+
+    x: rand(w * 0.15, w * 0.85),
+    y: rand(h * 0.25, h * 0.65),
+    direction: Math.random() < 0.5 ? -1 : 1,
+
+    baseSpeed,
+    targetX: rand(w * 0.15, w * 0.85),
+    targetY: rand(h * 0.25, h * 0.65),
+    changeTimer: rand(3, 7),
+
+    wigglePhase: Math.random() * Math.PI * 2,
+    wiggleSpeed: rand(4, 6),
+    wiggleAmount: 3,
+
+    el: null
+  };
+
+  const el = document.createElement("div");
+  el.className = "fish";
+  fish.el = el;
+
+  /* Pointer-based tap detection (works on phone + PC) */
+  let pointerDownX = 0, pointerDownY = 0, pointerDownTime = 0;
+  el.addEventListener("pointerdown", (e) => {
+    pointerDownX = e.clientX;
+    pointerDownY = e.clientY;
+    pointerDownTime = performance.now();
   });
-
-  // Hide info when tapping empty water
-  document.getElementById("camera").addEventListener("click", (e) => {
-    if (e.target.classList.contains("fish")) return;
-    hideFishInfo();
-  });
-
-  /* ---- create guppy ---- */
-  function createGuppy() {
-    if (coins < 20) return;
-    coins -= 20;
-    document.getElementById("coinCount").textContent = coins;
-
-    const w = getWorldWidth();
-    const h = getWorldHeight();
-
-    const gender      = Math.random() < 0.7 ? "Female" : "Male";
-    const temperament = choice(["Calm", "Normal", "Active"]);
-    const species     = "Guppy";
-    const name        = `${species} #${nextFishId}`;
-
-    // base speed tuned for mobile
-    let baseSpeed;
-    if (temperament === "Calm")        baseSpeed = rand(20, 26);
-    else if (temperament === "Active") baseSpeed = rand(30, 38);
-    else                               baseSpeed = rand(24, 32);
-
-    const fish = {
-      id: nextFishId++,
-      species,
-      name,
-      gender,
-      health: "Good",
-      ageSeconds: 0,
-      temperament,
-
-      x: rand(w * 0.15, w * 0.85),
-      y: rand(h * 0.25, h * 0.65),   // keep in visible band
-      direction: 1,
-
-      baseSpeed,
-      targetX: rand(w * 0.15, w * 0.85),
-      targetY: rand(h * 0.25, h * 0.65),
-      changeTimer: rand(3, 7),
-
-      wigglePhase: Math.random() * Math.PI * 2,
-      wiggleSpeed: 5,
-      wiggleAmount: 2,
-
-      el: null
-    };
-
-    fish.direction = fish.targetX >= fish.x ? 1 : -1;
-
-    const el = document.createElement("div");
-    el.className = "fish";
-    fish.el = el;
-
-    /* DESKTOP click */
-    el.addEventListener("click", (e) => {
+  el.addEventListener("pointerup", (e) => {
+    const dx = Math.abs(e.clientX - pointerDownX);
+    const dy = Math.abs(e.clientY - pointerDownY);
+    const dt = performance.now() - pointerDownTime;
+    if (dx < 10 && dy < 10 && dt < 250) {
       e.stopPropagation();
       showFishInfo(fish);
-    });
-
-    /* MOBILE tap (reliable on iPhone) */
-    let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
-    el.addEventListener("touchstart", (e) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      touchStartX = t.clientX;
-      touchStartY = t.clientY;
-      touchStartTime = performance.now();
-    }, { passive: true });
-
-    el.addEventListener("touchend", (e) => {
-      if (e.changedTouches.length !== 1) return;
-      const t = e.changedTouches[0];
-      const dx = Math.abs(t.clientX - touchStartX);
-      const dy = Math.abs(t.clientY - touchStartY);
-      const dt = performance.now() - touchStartTime;
-
-      // Treat as a tap if finger didn’t move much and was quick
-      if (dx < 10 && dy < 10 && dt < 300) {
-        e.stopPropagation();
-        showFishInfo(fish);
-      }
-    }, { passive: false });
-
-    fishLayer.appendChild(el);
-    fishList.push(fish);
-  }
-
-  /* ---- update fish ---- */
-  function updateGuppies(dt) {
-    const w = getWorldWidth();
-    const h = getWorldHeight();
-
-    const marginX     = w * 0.08;
-    const topLimit    = h * 0.15;
-    const bottomLimit = h * 0.80; // don’t sink into sand / phone bar
-
-    for (const f of fishList) {
-      f.ageSeconds += dt;
-
-      // occasionally pick a new target
-      f.changeTimer -= dt;
-      if (f.changeTimer <= 0) {
-        f.targetX = rand(w * 0.15, w * 0.85);
-        f.targetY = rand(h * 0.25, h * 0.65);
-        f.direction = f.targetX >= f.x ? 1 : -1;
-        const baseMin = f.temperament === "Active" ? 2.5 : 4;
-        const baseMax = f.temperament === "Active" ? 6 : 8;
-        f.changeTimer = rand(baseMin, baseMax);
-      }
-
-      const dx = f.targetX - f.x;
-      const dy = f.targetY - f.y;
-
-      const speed    = f.baseSpeed;
-      const maxStepX = speed * dt;
-      const maxStepY = speed * 0.35 * dt;
-
-      if (Math.abs(dx) <= maxStepX) f.x = f.targetX;
-      else f.x += Math.sign(dx) * maxStepX;
-
-      if (dx > 2) f.direction = 1;
-      else if (dx < -2) f.direction = -1;
-
-      if (Math.abs(dy) <= maxStepY) f.y = f.targetY;
-      else f.y += Math.sign(dy) * maxStepY;
-
-      if (f.x < marginX) {
-        f.x = marginX;
-        f.targetX = rand(marginX + 30, w - marginX);
-        f.direction = 1;
-      } else if (f.x > w - marginX) {
-        f.x = w - marginX;
-        f.targetX = rand(marginX, w - marginX - 30);
-        f.direction = -1;
-      }
-
-      if (f.y < topLimit)    f.y = topLimit;
-      if (f.y > bottomLimit) f.y = bottomLimit;
-
-      // wiggle + tilt
-      f.wigglePhase += f.wiggleSpeed * dt;
-      const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
-      const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.08));
-      const tilt       = wiggleTilt + swimTilt;
-
-      /*
-        guppy1.PNG faces LEFT in your art (head on the left).
-        So:
-          direction === 1 (moving RIGHT)  -> scaleX(-1)
-          direction === -1(moving LEFT)   -> scaleX(1)
-      */
-      const face = -f.direction;
-
-      f.el.style.left = `${f.x}px`;
-      f.el.style.top  = `${f.y}px`;
-      f.el.style.transform = `scaleX(${face}) rotate(${tilt}deg)`;
     }
+  });
+
+  fishLayer.appendChild(el);
+  fishList.push(fish);
+}
+
+/* ================== FISH UPDATE ================== */
+function updateFish(dt) {
+  const w = tankRect.width;
+  const h = tankRect.height;
+
+  const marginX     = w * 0.06;
+  const topLimit    = h * 0.18;
+  const bottomLimit = h * 0.80;
+
+  for (const f of fishList) {
+    f.ageSeconds += dt;
+
+    // change target occasionally
+    f.changeTimer -= dt;
+    if (f.changeTimer <= 0) {
+      f.targetX = rand(w * 0.15, w * 0.85);
+      f.targetY = rand(h * 0.25, h * 0.65);
+
+      const baseMin = f.temperament === "Active" ? 2.5 : 4;
+      const baseMax = f.temperament === "Active" ? 5 : 7;
+      f.changeTimer = rand(baseMin, baseMax);
+    }
+
+    const dx = f.targetX - f.x;
+    const dy = f.targetY - f.y;
+
+    // smooth step
+    const speed    = f.baseSpeed;
+    const maxStepX = speed * dt;
+    const maxStepY = speed * 0.35 * dt;
+
+    if (Math.abs(dx) <= maxStepX) f.x = f.targetX;
+    else f.x += Math.sign(dx) * maxStepX;
+
+    if (Math.abs(dy) <= maxStepY) f.y = f.targetY;
+    else f.y += Math.sign(dy) * maxStepY;
+
+    // turn based on movement
+    if (dx > 2)      f.direction = 1;
+    else if (dx < -2) f.direction = -1;
+
+    // keep inside tank
+    if (f.x < marginX) {
+      f.x = marginX;
+      f.targetX = rand(marginX + 30, w - marginX);
+      f.direction = 1;
+    } else if (f.x > w - marginX) {
+      f.x = w - marginX;
+      f.targetX = rand(marginX, w - marginX - 30);
+      f.direction = -1;
+    }
+
+    if (f.y < topLimit)    f.y = topLimit;
+    if (f.y > bottomLimit) f.y = bottomLimit;
+
+    // wiggle + tilt
+    f.wigglePhase += f.wiggleSpeed * dt;
+    const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
+    const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.12));
+    const tilt       = wiggleTilt + swimTilt;
+
+    /* IMPORTANT:
+       If your guppy image faces RIGHT by default, use:
+         const face = f.direction;
+       If it faces LEFT by default, use:
+         const face = -f.direction;
+       Try one; if they still look like they're swimming backwards,
+       switch to the other.
+    */
+    const face = -f.direction;  // <-- change to f.direction if needed
+
+    f.el.style.left = `${f.x - 70}px`; // center by width/2
+    f.el.style.top  = `${f.y - 40}px`; // center by height/2
+    f.el.style.transform = `scaleX(${face}) rotate(${tilt}deg)`;
   }
+}
 
-  /* ---- main loop ---- */
-  let lastTime = null;
-  function frame(ts) {
-    if (lastTime == null) lastTime = ts;
-    let dt = (ts - lastTime) / 1000;
-    lastTime = ts;
+/* ================== PARALLAX & FX ================== */
+let parallaxTime = 0;
+const layerBack  = document.getElementById("layerBack");
+const layerMid   = document.getElementById("layerMid");
+const layerFront = document.getElementById("layerFront");
 
-    // clamp dt to avoid huge jumps on mobile
-    if (dt > 0.05) dt = 0.05;
+const bubbles = [];
 
-    updateGuppies(dt);
-    requestAnimationFrame(frame);
+function spawnBubble() {
+  const x = Math.random() * tankRect.width;
+  const size = rand(4, 10);
+  const speed = rand(20, 45);
+  bubbles.push({
+    x,
+    y: tankRect.height + size + rand(0, 60),
+    size,
+    speed,
+    wobblePhase: Math.random() * Math.PI * 2,
+    wobbleSpeed: rand(1.5, 3),
+    wobbleAmount: rand(3, 8)
+  });
+}
+
+for (let i = 0; i < 18; i++) spawnBubble();
+
+function updateFx(dt) {
+  parallaxTime += dt;
+
+  // gentle parallax sway
+  const swayBack  = Math.sin(parallaxTime * 0.12) * 4;
+  const swayMid   = Math.sin(parallaxTime * 0.18 + 1.2) * 8;
+  const swayFront = Math.sin(parallaxTime * 0.25 + 2.4) * 14;
+
+  layerBack.style.transform  = `translateY(${swayBack}px)`;
+  layerMid.style.transform   = `translateY(${swayMid}px)`;
+  layerFront.style.transform = `translateY(${swayFront}px)`;
+
+  // bubbles + caustics
+  ctx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+
+  // light caustics overlay
+  const grad = ctx.createLinearGradient(0, 0, fxCanvas.width, fxCanvas.height);
+  grad.addColorStop(0, "rgba(255,255,255,0.08)");
+  grad.addColorStop(1, "rgba(0,0,0,0.2)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, fxCanvas.width, fxCanvas.height);
+
+  // animated light streaks
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  const beamCount = 5;
+  for (let i = 0; i < beamCount; i++) {
+    const phase = parallaxTime * 0.1 + i * 1.1;
+    const x = (Math.sin(phase) * 0.4 + 0.5) * fxCanvas.width;
+    const width = fxCanvas.width * 0.15;
+    ctx.beginPath();
+    ctx.moveTo(x - width, 0);
+    ctx.lineTo(x + width, 0);
+    ctx.lineTo(x + width * 0.2, fxCanvas.height);
+    ctx.lineTo(x - width * 0.2, fxCanvas.height);
+    ctx.closePath();
+    ctx.fill();
   }
+  ctx.restore();
 
-  /* ---- init ---- */
-  function init() {
-    createGuppy();
-    createGuppy();
-    createGuppy();
-    requestAnimationFrame(frame);
+  // bubbles
+  if (Math.random() < 4 * dt) spawnBubble();
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.y -= b.speed * dt;
+    b.wobblePhase += b.wobbleSpeed * dt;
+    const wobbleX = Math.sin(b.wobblePhase) * b.wobbleAmount;
+
+    if (b.y < -b.size - 20) {
+      bubbles.splice(i, 1);
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.arc(b.x + wobbleX, b.y, b.size, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const gradBubble = ctx.createRadialGradient(
+      b.x + wobbleX - b.size * 0.4,
+      b.y - b.size * 0.4,
+      0,
+      b.x + wobbleX,
+      b.y,
+      b.size
+    );
+    gradBubble.addColorStop(0, "rgba(255,255,255,0.4)");
+    gradBubble.addColorStop(1, "rgba(255,255,255,0.05)");
+    ctx.fillStyle = gradBubble;
+    ctx.fill();
   }
-  init();
+  ctx.restore();
+}
 
-  // buttons
-  document.getElementById("buyBtn").onclick   = createGuppy;
-  document.getElementById("feedBtn").onclick  = () => {};
-  document.getElementById("cleanBtn").onclick = () => {};
-  document.getElementById("shopBtn").onclick  = () => {};
+/* ================== MAIN LOOP ================== */
+let lastTime = null;
+function frame(ts) {
+  if (lastTime == null) lastTime = ts;
+  let dt = (ts - lastTime) / 1000;
+  lastTime = ts;
+  if (dt > 0.05) dt = 0.05; // clamp
 
-  // music unlock on first interaction (for mobile autoplay)
-  const bgMusic = document.getElementById("bgMusic");
-  function unlockMusic() {
-    bgMusic.play().catch(()=>{});
-    window.removeEventListener("pointerdown", unlockMusic);
-  }
-  window.addEventListener("pointerdown", unlockMusic);
+  updateFish(dt);
+  updateFx(dt);
+
+  requestAnimationFrame(frame);
+}
+
+/* ================== INIT ================== */
+function initGame() {
+  updateTankRect();
+  createGuppy();
+  createGuppy();
+  createGuppy();
+  requestAnimationFrame(frame);
+}
+initGame();
+
+/* ================== BUTTONS ================== */
+document.getElementById("buyBtn").addEventListener("click", createGuppy);
+document.getElementById("feedBtn").addEventListener("click", () => {
+  // placeholder: later we can lower hunger, increase health, etc.
+  alert("Feeding all fish (placeholder)");
+});
+document.getElementById("cleanBtn").addEventListener("click", () => {
+  alert("Cleaning tank (placeholder)");
+});
+document.getElementById("shopBtn").addEventListener("click", () => {
+  alert("Shop coming soon!");
+});
+
+/* ================== MUSIC AUTOPLAY UNLOCK ================== */
+const bgMusic = document.getElementById("bgMusic");
+function unlockMusic() {
+  bgMusic.play().catch(() => {});
+  window.removeEventListener("pointerdown", unlockMusic);
+}
+window.addEventListener("pointerdown", unlockMusic);
 </script>
 </body>
 </html>
