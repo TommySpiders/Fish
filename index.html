@@ -43,15 +43,15 @@
       touch-action: none;
     }
 
-    /* Make the world wider AND taller than the screen so we can pan */
+    /* Tank is wide AND tall so you can scroll up & down */
     #world {
       position: absolute;
       left: 0;
       top: 0;
       width: 300vw;
-      height: 140vh; /* taller than viewport so we can see more up/down */
+      height: 180vh; /* taller tank so sand is reachable */
       background-image: url("bg-underwater.PNG");
-      background-size: 300vw 140vh;
+      background-size: 300vw 180vh;
       background-repeat: no-repeat;
       transform-origin: top left;
     }
@@ -60,8 +60,9 @@
       position: absolute;
       inset: 0;
       width: 300vw;
-      height: 140vh;
-      pointer-events: none;
+      height: 180vh;
+      /* IMPORTANT: allow clicks on fish */
+      pointer-events: auto;
     }
 
     .fish {
@@ -75,6 +76,7 @@
       transform-origin: center;
       pointer-events: auto;
       filter: drop-shadow(0 6px 8px rgba(0,0,0,0.5));
+      cursor: pointer;
     }
 
     .bubbleBtn {
@@ -117,8 +119,38 @@
       z-index: 10;
       font-size: 11px;
     }
+
     #coinBubble span {
       font-size: 14px;
+    }
+
+    /* Fish info panel (on tap) */
+    #fishInfoPanel {
+      position: fixed;
+      left: 50%;
+      top: 12%;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      background: rgba(0, 0, 0, 0.65);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.4);
+      color: #fff;
+      font-size: 13px;
+      display: none;
+      z-index: 20;
+      min-width: 130px;
+      text-align: center;
+    }
+
+    #fishInfoName {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    #fishInfoBody {
+      font-size: 12px;
+      opacity: 0.9;
     }
 
     audio {
@@ -141,6 +173,12 @@
 
 <div id="coinBubble">🪙<span id="coinCount">80</span></div>
 
+<!-- Tap-to-view info -->
+<div id="fishInfoPanel">
+  <div id="fishInfoName">Guppy</div>
+  <div id="fishInfoBody">Guppy #1 (Female)</div>
+</div>
+
 <!-- Background music: upload bg-music.mp3 into this repo -->
 <audio id="bgMusic" src="bg-music.mp3" autoplay loop></audio>
 
@@ -158,7 +196,22 @@
   const rand = (a,b) => a + Math.random()*(b-a);
 
   function getWorldWidth()  { return window.innerWidth * 3; }
-  function getWorldHeight() { return window.innerHeight * 1.4; } // matches 140vh
+  function getWorldHeight() { return window.innerHeight * 1.8; } // 180vh
+
+  /* ---- fish info panel ---- */
+  const fishInfoPanel = document.getElementById("fishInfoPanel");
+  const fishInfoName  = document.getElementById("fishInfoName");
+  const fishInfoBody  = document.getElementById("fishInfoBody");
+
+  function showFishInfo(fish) {
+    fishInfoName.textContent = `Guppy #${fish.id}`;
+    fishInfoBody.textContent = `${fish.gender}`;
+    fishInfoPanel.style.display = "block";
+  }
+
+  function hideFishInfo() {
+    fishInfoPanel.style.display = "none";
+  }
 
   /* ---- camera: drag in both directions, clamped so no black ---- */
   let camX = 0;
@@ -201,7 +254,7 @@
     const worldH = getWorldHeight() * camScale;
 
     camX = vw/2 - worldW/2;
-    camY = vh/2 - worldH/2; // start roughly in the middle vertically
+    camY = vh/2 - worldH/2; // center vertically so you can go both up & down
     clampCamera();
     applyCamera();
   }
@@ -242,6 +295,7 @@
     lastX = e.clientX;
     lastY = e.clientY;
   });
+
   window.addEventListener("mousemove", (e) => {
     if (!isDragging) return;
     const dx = e.clientX - lastX;
@@ -253,9 +307,17 @@
     clampCamera();
     applyCamera();
   });
+
   window.addEventListener("mouseup", () => { isDragging = false; });
 
-  /* ---- create guppy ---- */
+  // Hide info when tapping empty water (but not when dragging)
+  cameraEl.addEventListener("click", (e) => {
+    // ignore clicks that originated on a fish
+    if (e.target.classList.contains("fish")) return;
+    hideFishInfo();
+  });
+
+  /* ---- create guppy (with gender) ---- */
   function createGuppy() {
     if (coins < 20) return;
     coins -= 20;
@@ -264,22 +326,22 @@
     const w = getWorldWidth();
     const h = getWorldHeight();
 
+    // More females than males (about 70% female)
+    const gender = Math.random() < 0.7 ? "Female" : "Male";
+
     const fish = {
       id: nextFishId++,
       x: rand(150, w - 150),
       y: rand(h * 0.25, h * 0.75),
-
-      direction: 1,      // 1 = right, -1 = left
+      direction: 1,           // 1 = right, -1 = left
       baseSpeed: rand(22, 34),
-
       targetX: rand(150, w - 150),
       targetY: rand(h * 0.25, h * 0.9),
       changeTimer: rand(4, 9),
-
       wigglePhase: Math.random() * Math.PI * 2,
       wiggleSpeed: 5,
       wiggleAmount: 2,
-
+      gender,
       el: null
     };
 
@@ -288,6 +350,13 @@
     const el = document.createElement("div");
     el.className = "fish";
     fish.el = el;
+
+    // Make fish clickable
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showFishInfo(fish);
+    });
+
     fishLayer.appendChild(el);
     fishList.push(fish);
   }
@@ -299,10 +368,9 @@
 
     const marginX = 150;
     const topLimit = h * 0.12;
-    const bottomLimit = h * 0.95;
+    const bottomLimit = h * 0.97; // keep just above absolute bottom (sand visible)
 
     for (const f of fishList) {
-      // choose new target sometimes
       f.changeTimer -= dt;
       if (f.changeTimer <= 0) {
         f.targetX = rand(150, w - 150);
@@ -350,11 +418,9 @@
       const swimTilt = Math.max(-10, Math.min(10, -dy * 0.08));
       const tilt = wiggleTilt + swimTilt;
 
-      // IMPORTANT:
-      // If guppy1.PNG faces LEFT by default, use -1 for right and 1 for left:
+      // If guppy1.PNG faces LEFT by default, this is correct.
+      // If it faces RIGHT, swap -1 and 1.
       const face = f.direction === 1 ? -1 : 1;
-      // If your image actually faces RIGHT, swap to:
-      // const face = f.direction === 1 ? 1 : -1;
 
       f.el.style.left = `${f.x}px`;
       f.el.style.top  = `${f.y}px`;
@@ -382,8 +448,8 @@
   }
   init();
 
-  // buttons (still simple)
-  document.getElementById("buyBtn").onclick = createGuppy;
+  // buttons
+  document.getElementById("buyBtn").onclick   = createGuppy;
   document.getElementById("feedBtn").onclick  = () => {};
   document.getElementById("cleanBtn").onclick = () => {};
   document.getElementById("shopBtn").onclick  = () => {};
