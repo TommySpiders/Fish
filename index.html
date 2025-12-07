@@ -27,15 +27,19 @@
       box-sizing: border-box;
     }
 
+    html, body {
+      touch-action: none !important;
+      overscroll-behavior: none !important;
+    }
+
     body {
       overflow: hidden;
-      background: #00506d; /* close to water colour so edges blend */
+      background: #005a7a; /* close to the water colour to hide any tiny edges */
       font-family: system-ui, sans-serif;
-      touch-action: none;
       color: #fff;
     }
 
-    /* CAMERA + WORLD */
+    /* CAMERA */
     #camera {
       position: fixed;
       inset: 0;
@@ -43,16 +47,16 @@
       touch-action: none;
     }
 
-    /* Tank is taller than screen, width = screen (no side bars) */
+    /* TALL TANK – width matches screen, height is 1.7x screen */
     #world {
       position: absolute;
       left: 0;
       top: 0;
       width: 100vw;
-      height: 160vh; /* 1.6x screen height */
+      height: 170vh;
       background-image: url("bg-underwater.PNG");
-      background-size: 100% 100%;   /* no crazy zoom, fills tank */
-      background-position: center;
+      background-size: cover;      /* no stretching, just crop a bit */
+      background-position: center; /* centre the image */
       background-repeat: no-repeat;
       transform-origin: top left;
     }
@@ -140,7 +144,6 @@
       display: none;
       z-index: 20;
       min-width: 170px;
-      text-align: left;
     }
 
     #fishInfoTitle {
@@ -155,6 +158,7 @@
       opacity: 0.95;
       line-height: 1.4;
       white-space: pre-line;
+      text-align: left;
     }
 
     audio {
@@ -187,8 +191,8 @@
 <audio id="bgMusic" src="bg-music.mp3" autoplay loop></audio>
 
 <script>
-  const cameraEl = document.getElementById("camera");
-  const worldEl  = document.getElementById("world");
+  const cameraEl  = document.getElementById("camera");
+  const worldEl   = document.getElementById("world");
   const fishLayer = document.getElementById("fishLayer");
 
   let coins = 80;
@@ -197,7 +201,7 @@
   const fishList = [];
   let nextFishId = 1;
 
-  const rand = (a,b) => a + Math.random()*(b-a);
+  const rand   = (a,b) => a + Math.random()*(b-a);
   const choice = (arr) => arr[Math.floor(Math.random()*arr.length)];
 
   function getWorldWidth()  { return worldEl.getBoundingClientRect().width; }
@@ -235,7 +239,7 @@
     fishInfoPanel.style.display = "none";
   }
 
-  // tap panel to rename fish
+  // Tap panel to rename fish
   fishInfoPanel.addEventListener("click", (e) => {
     e.stopPropagation();
     const id = Number(fishInfoPanel.dataset.fishId || 0);
@@ -248,55 +252,49 @@
   });
 
   /* ---- camera: vertical drag only ---- */
-  let camX = 0;
   let camY = 0;
-  const camScale = 1;
 
   function clampCamera() {
-    const vw = window.innerWidth;
     const vh = window.innerHeight;
-
-    const worldW = getWorldWidth()  * camScale;
-    const worldH = getWorldHeight() * camScale;
-
-    // x: no side scroll, no bars
-    camX = 0;
-
-    // y: can move between top (0) and bottom (vh - worldH)
+    const worldH = getWorldHeight();
     const minY = vh - worldH;
     const maxY = 0;
     camY = Math.max(minY, Math.min(maxY, camY));
   }
 
   function applyCamera() {
-    worldEl.style.transform = `translate(${camX}px, ${camY}px) scale(${camScale})`;
+    worldEl.style.transform = `translateY(${camY}px)`;
   }
 
   function centerCamera() {
     const vh = window.innerHeight;
-    const worldH = getWorldHeight() * camScale;
-    camX = 0;
-    // start in middle of tank
+    const worldH = getWorldHeight();
     camY = (vh - worldH) / 2;
     clampCamera();
     applyCamera();
   }
 
-  window.addEventListener("resize", () => { clampCamera(); applyCamera(); });
+  window.addEventListener("resize", () => {
+    clampCamera();
+    applyCamera();
+  });
+
   centerCamera();
 
   let isDragging = false;
   let lastY = 0;
 
-  // touch drag
+  // touch drag (iPhone fix: passive:false + preventDefault)
   cameraEl.addEventListener("touchstart", (e) => {
+    e.preventDefault();
     if (e.touches.length === 1) {
       isDragging = true;
       lastY = e.touches[0].clientY;
     }
-  }, {passive:true});
+  }, { passive: false });
 
   cameraEl.addEventListener("touchmove", (e) => {
+    e.preventDefault();
     if (!isDragging || e.touches.length !== 1) return;
     const y = e.touches[0].clientY;
     const dy = y - lastY;
@@ -304,11 +302,14 @@
     camY += dy;
     clampCamera();
     applyCamera();
-  }, {passive:true});
+  }, { passive: false });
 
-  cameraEl.addEventListener("touchend", () => { isDragging = false; });
+  cameraEl.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    isDragging = false;
+  }, { passive: false });
 
-  // mouse drag
+  // mouse drag (desktop)
   cameraEl.addEventListener("mousedown", (e) => {
     isDragging = true;
     lastY = e.clientY;
@@ -345,11 +346,11 @@
     const species = "Guppy";
     const name = `${species} #${nextFishId}`;
 
-    // base speed depends a bit on temperament
+    // base speed a bit higher so they actually travel
     let baseSpeed;
-    if (temperament === "Calm") baseSpeed = rand(18, 26);
-    else if (temperament === "Active") baseSpeed = rand(26, 34);
-    else baseSpeed = rand(22, 30);
+    if (temperament === "Calm") baseSpeed = rand(20, 28);
+    else if (temperament === "Active") baseSpeed = rand(30, 40);
+    else baseSpeed = rand(24, 34);
 
     const fish = {
       id: nextFishId++,
@@ -367,7 +368,7 @@
       baseSpeed,
       targetX: rand(w * 0.15, w * 0.85),
       targetY: rand(h * 0.20, h * 0.90),
-      changeTimer: rand(4, 9),
+      changeTimer: rand(3, 7),  // change direction more often
 
       wigglePhase: Math.random() * Math.PI * 2,
       wiggleSpeed: 5,
@@ -396,8 +397,8 @@
     const w = getWorldWidth();
     const h = getWorldHeight();
 
-    const marginX = w * 0.08;
-    const topLimit = h * 0.06;
+    const marginX     = w * 0.08;
+    const topLimit    = h * 0.06;
     const bottomLimit = h * 0.96;
 
     for (const f of fishList) {
@@ -409,32 +410,26 @@
         f.targetX = rand(w * 0.15, w * 0.85);
         f.targetY = rand(h * 0.20, h * 0.90);
         f.direction = f.targetX >= f.x ? 1 : -1;
-        const baseMin = f.temperament === "Active" ? 3 : 5;
-        const baseMax = f.temperament === "Active" ? 7 : 10;
+        const baseMin = f.temperament === "Active" ? 2.5 : 4;
+        const baseMax = f.temperament === "Active" ? 6 : 8;
         f.changeTimer = rand(baseMin, baseMax);
       }
 
       const dx = f.targetX - f.x;
       const dy = f.targetY - f.y;
 
-      const speed = f.baseSpeed;
+      const speed    = f.baseSpeed;
       const maxStepX = speed * dt;
       const maxStepY = speed * 0.35 * dt;
 
-      if (Math.abs(dx) <= maxStepX) {
-        f.x = f.targetX;
-      } else {
-        f.x += Math.sign(dx) * maxStepX;
-      }
+      if (Math.abs(dx) <= maxStepX) f.x = f.targetX;
+      else f.x += Math.sign(dx) * maxStepX;
 
       if (dx > 2) f.direction = 1;
       else if (dx < -2) f.direction = -1;
 
-      if (Math.abs(dy) <= maxStepY) {
-        f.y = f.targetY;
-      } else {
-        f.y += Math.sign(dy) * maxStepY;
-      }
+      if (Math.abs(dy) <= maxStepY) f.y = f.targetY;
+      else f.y += Math.sign(dy) * maxStepY;
 
       if (f.x < marginX) {
         f.x = marginX;
@@ -446,18 +441,22 @@
         f.direction = -1;
       }
 
-      if (f.y < topLimit) f.y = topLimit;
+      if (f.y < topLimit)  f.y = topLimit;
       if (f.y > bottomLimit) f.y = bottomLimit;
 
+      // small wiggle + tilt
       f.wigglePhase += f.wiggleSpeed * dt;
       const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
-      const swimTilt = Math.max(-10, Math.min(10, -dy * 0.08));
-      const tilt = wiggleTilt + swimTilt;
+      const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.08));
+      const tilt       = wiggleTilt + swimTilt;
 
-      /* IMPORTANT:
-         This assumes guppy1.PNG faces RIGHT by default.
-         If in your image the guppy faces LEFT, swap 1 and -1. */
-      const face = f.direction === 1 ? 1 : -1;
+      /*
+        IMPORTANT: your guppy image faces LEFT by default (head on the left).
+        So:
+        - when direction === 1 (moving RIGHT) -> flip horizontally (scaleX(-1))
+        - when direction === -1 (moving LEFT) -> no flip (scaleX(1))
+      */
+      const face = f.direction === 1 ? -1 : 1;
 
       f.el.style.left = `${f.x}px`;
       f.el.style.top  = `${f.y}px`;
@@ -491,7 +490,7 @@
   document.getElementById("cleanBtn").onclick = () => {};
   document.getElementById("shopBtn").onclick  = () => {};
 
-  // music unlock on first interaction (for mobile autoplay rules)
+  // music unlock on first interaction (for mobile autoplay)
   const bgMusic = document.getElementById("bgMusic");
   function unlockMusic() {
     bgMusic.play().catch(()=>{});
