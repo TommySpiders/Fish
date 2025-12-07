@@ -32,16 +32,16 @@
       height: 100%;
       touch-action: none;
       overscroll-behavior: none;
+      overflow: hidden;
     }
 
     body {
-      overflow: hidden;
-      background: #004b68; /* water-ish colour behind everything */
+      background: #004b68; /* water-coloured behind the tank */
       font-family: system-ui, sans-serif;
       color: #fff;
     }
 
-    /* Fixed camera: tank == screen size */
+    /* Tank fills the screen (no scrolling) */
     #camera {
       position: fixed;
       inset: 0;
@@ -49,7 +49,6 @@
       touch-action: none;
     }
 
-    /* Tank exactly fills the screen */
     #world {
       position: absolute;
       left: 0;
@@ -57,9 +56,10 @@
       width: 100vw;
       height: 100vh;
       background-image: url("bg-underwater.PNG");
-      background-size: cover;      /* no stretching, just crop edges if needed */
-      background-position: center;
+      background-size: contain;          /* show the whole image */
       background-repeat: no-repeat;
+      background-position: center bottom;/* keep sand at the bottom */
+      background-color: #004b68;         /* same water colour behind */
     }
 
     #fishLayer {
@@ -224,7 +224,9 @@
     fishInfoPanel.dataset.fishId = String(fish.id);
     fishInfoTitle.textContent = `${fish.species} (${fish.gender})`;
     const lines = [
+      `Species: ${fish.species}`,
       `Name: ${fish.name}`,
+      `Gender: ${fish.gender}`,
       `Health: ${fish.health}`,
       `Age: ${formatAge(fish.ageSeconds)}`,
       `Temperament: ${fish.temperament}`,
@@ -266,16 +268,16 @@
     const w = getWorldWidth();
     const h = getWorldHeight();
 
-    const gender = Math.random() < 0.7 ? "Female" : "Male";
+    const gender      = Math.random() < 0.7 ? "Female" : "Male";
     const temperament = choice(["Calm", "Normal", "Active"]);
-    const species = "Guppy";
-    const name = `${species} #${nextFishId}`;
+    const species     = "Guppy";
+    const name        = `${species} #${nextFishId}`;
 
-    // base speed tuned for mobile: not too slow, not crazy
+    // base speed tuned for mobile
     let baseSpeed;
-    if (temperament === "Calm")         baseSpeed = rand(20, 26);
-    else if (temperament === "Active")  baseSpeed = rand(30, 38);
-    else                                baseSpeed = rand(24, 32);
+    if (temperament === "Calm")        baseSpeed = rand(20, 26);
+    else if (temperament === "Active") baseSpeed = rand(30, 38);
+    else                               baseSpeed = rand(24, 32);
 
     const fish = {
       id: nextFishId++,
@@ -287,12 +289,12 @@
       temperament,
 
       x: rand(w * 0.15, w * 0.85),
-      y: rand(h * 0.25, h * 0.75),
+      y: rand(h * 0.25, h * 0.65),   // keep in visible band
       direction: 1,
 
       baseSpeed,
       targetX: rand(w * 0.15, w * 0.85),
-      targetY: rand(h * 0.20, h * 0.80), // keep off very top/bottom
+      targetY: rand(h * 0.25, h * 0.65),
       changeTimer: rand(3, 7),
 
       wigglePhase: Math.random() * Math.PI * 2,
@@ -308,13 +310,13 @@
     el.className = "fish";
     fish.el = el;
 
-    // DESKTOP: normal click
+    /* DESKTOP click */
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       showFishInfo(fish);
     });
 
-    // MOBILE: manual tap detection (fixes iPhone not firing click)
+    /* MOBILE tap (reliable on iPhone) */
     let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
     el.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
@@ -331,7 +333,7 @@
       const dy = Math.abs(t.clientY - touchStartY);
       const dt = performance.now() - touchStartTime;
 
-      // treat as a tap if finger did not move much and was quick
+      // Treat as a tap if finger didn’t move much and was quick
       if (dx < 10 && dy < 10 && dt < 300) {
         e.stopPropagation();
         showFishInfo(fish);
@@ -348,8 +350,8 @@
     const h = getWorldHeight();
 
     const marginX     = w * 0.08;
-    const topLimit    = h * 0.08;
-    const bottomLimit = h * 0.92;
+    const topLimit    = h * 0.15;
+    const bottomLimit = h * 0.80; // don’t sink into sand / phone bar
 
     for (const f of fishList) {
       f.ageSeconds += dt;
@@ -358,7 +360,7 @@
       f.changeTimer -= dt;
       if (f.changeTimer <= 0) {
         f.targetX = rand(w * 0.15, w * 0.85);
-        f.targetY = rand(h * 0.20, h * 0.80);
+        f.targetY = rand(h * 0.25, h * 0.65);
         f.direction = f.targetX >= f.x ? 1 : -1;
         const baseMin = f.temperament === "Active" ? 2.5 : 4;
         const baseMax = f.temperament === "Active" ? 6 : 8;
@@ -391,26 +393,22 @@
         f.direction = -1;
       }
 
-      if (f.y < topLimit)      f.y = topLimit;
-      if (f.y > bottomLimit)   f.y = bottomLimit;
+      if (f.y < topLimit)    f.y = topLimit;
+      if (f.y > bottomLimit) f.y = bottomLimit;
 
-      // small wiggle + tilt
+      // wiggle + tilt
       f.wigglePhase += f.wiggleSpeed * dt;
       const wiggleTilt = Math.sin(f.wigglePhase) * f.wiggleAmount;
       const swimTilt   = Math.max(-10, Math.min(10, -dy * 0.08));
       const tilt       = wiggleTilt + swimTilt;
 
       /*
-        Direction:
-        This assumes guppy1.PNG faces RIGHT by default.
-        - direction === 1 (moving right)  -> scaleX(1)
-        - direction === -1 (moving left) -> scaleX(-1)
-
-        If on your screen they still look backwards,
-        change the next line to:
-          const face = -f.direction;
+        guppy1.PNG faces LEFT in your art (head on the left).
+        So:
+          direction === 1 (moving RIGHT)  -> scaleX(-1)
+          direction === -1(moving LEFT)   -> scaleX(1)
       */
-      const face = f.direction;
+      const face = -f.direction;
 
       f.el.style.left = `${f.x}px`;
       f.el.style.top  = `${f.y}px`;
